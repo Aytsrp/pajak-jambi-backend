@@ -15,7 +15,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone_number', 20);
             $table->string('pin_number');
+            $table->unsignedTinyInteger('pin_attempts')->default(0);
+            $table->timestamp('pin_locked_until')->nullable();
             $table->string('password');
+            $table->unsignedTinyInteger('login_attempts')->default(0);
+            $table->timestamp('login_locked_until')->nullable();
             $table->boolean('is_nik_verified')->default(false);
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();

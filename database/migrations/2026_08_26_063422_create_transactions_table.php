@@ -21,6 +21,7 @@ return new class extends Migration
                 ->constrained('payments', 'id_payment')
                 ->nullOnDelete();
             $table->string('transaction_ref')->unique();
+            $table->string('idempotency_key')->unique();
             $table->enum('tax_type', ['pbb', 'pajak_usaha', 'bphtb']);
             $table->string('reference_type');
             $table->unsignedBigInteger('reference_id');
