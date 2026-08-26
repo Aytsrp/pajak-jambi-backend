@@ -67,11 +67,10 @@ class AccountSecurityService
     public function generateOtp(User $user, OtpPurpose $purpose, OtpChannel $channel): Otp
     {
         // Invalidate OTP lama yang masih aktif untuk purpose yang sama
-        // (cegah numpuk banyak kode aktif sekaligus)
         $user->otps()
             ->where('purpose', $purpose)
             ->whereNull('used_at')
-            ->update(['used_at' => now()]); // paksa expired-used
+            ->update(['used_at' => now()]);
 
         $plainCode = str_pad((string) random_int(0, 999999), config('security.otp.length'), '0', STR_PAD_LEFT);
 
@@ -120,11 +119,10 @@ class AccountSecurityService
 
         $otp->update(['used_at' => now()]);
 
-        // Efek samping sesuai purpose
         match ($purpose) {
             OtpPurpose::UnlockAccount => $this->resetLoginAttempts($user),
             OtpPurpose::ResetPin => $this->resetPinAttempts($user),
-            OtpPurpose::ResetPassword => null, // password diganti terpisah setelah OTP valid, di controller
+            OtpPurpose::ResetPassword => null,
         };
 
         return $otp;

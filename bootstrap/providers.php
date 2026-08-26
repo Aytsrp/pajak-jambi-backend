@@ -2,5 +2,5 @@
 
 return [
     App\Providers\AppServiceProvider::class,
-    App\Providers\Pemdaserviceprovider::class,
+    App\Providers\PemdaServiceProvider::class,
 ];

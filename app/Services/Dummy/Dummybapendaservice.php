@@ -3,91 +3,132 @@
 namespace App\Services\Dummy;
 
 use App\Contracts\BapendaServiceInterface;
+use Carbon\Carbon;
 
-/**
- * Implementasi SEMENTARA selagi integrasi SIMPAD Bapenda belum tersedia.
- * Data di bawah 100% fiktif, dipakai untuk keperluan development & demo magang.
- *
- * Cara pakai untuk testing: gunakan salah satu NOP/NPWPD di bawah untuk
- * mensimulasikan "ditemukan", nomor lain di luar itu -> "tidak ditemukan".
- */
 class DummyBapendaService implements BapendaServiceInterface
 {
     /**
-     * @var array<string, array{nama_wp: string, alamat_objek: string}>
+     * Dataset dummy NOP. Key = nomor NOP yang "valid" di sistem Bapenda simulasi.
      */
-    private array $dummyNops = [
-        '157101010001000001' => [
-            'nama_wp' => 'Budi Santoso',
-            'alamat_objek' => 'Jl. Sultan Thaha No. 10, Telanaipura, Kota Jambi',
+    private const NOP_DATASET = [
+        '3671010203040001' => [
+            'object_name' => 'Rumah Tinggal - Jl. Slamet Riyadi No. 12',
+            'owner_name' => 'Ahmad Fauzi',
+            'object_address' => 'Jl. Slamet Riyadi No. 12, Kel. Sungai Asam, Kec. Pasar Jambi, Kota Jambi',
         ],
-        '157102020002000002' => [
-            'nama_wp' => 'Siti Aminah',
-            'alamat_objek' => 'Jl. Hayam Wuruk No. 25, Jelutung, Kota Jambi',
+        '3671010203040002' => [
+            'object_name' => 'Tanah Kosong - Jl. Hayam Wuruk',
+            'owner_name' => 'Ahmad Fauzi',
+            'object_address' => 'Jl. Hayam Wuruk, Kel. Talang Bakung, Kec. Jambi Selatan, Kota Jambi',
         ],
-        '157103030003000003' => [
-            'nama_wp' => 'PT Sumber Rejeki Jambi',
-            'alamat_objek' => 'Jl. Gatot Subroto No. 88, Pasar Jambi, Kota Jambi',
+        '3671010203040003' => [
+            'object_name' => 'Ruko 2 Lantai - Jl. Gatot Subroto',
+            'owner_name' => 'Siti Rahma',
+            'object_address' => 'Jl. Gatot Subroto No. 45, Kel. Legok, Kec. Telanaipura, Kota Jambi',
         ],
     ];
 
     /**
-     * @var array<string, array{nama_usaha: string, jenis_usaha: string, alamat_usaha: string}>
+     * Dataset dummy NPWPD.
      */
-    private array $dummyNpwpds = [
-        'NPWPD-JBI-0001' => [
-            'nama_usaha' => 'Rumah Makan Sederhana Jambi',
-            'jenis_usaha' => 'restoran',
-            'alamat_usaha' => 'Jl. Kolonel Abunjani No. 12, Kota Jambi',
+    private const NPWPD_DATASET = [
+        '01.234.567.8-331' => [
+            'business_name' => 'Rumah Makan Sedap Rasa',
+            'business_type' => 'PBJT Makanan & Minuman',
+            'owner_name' => 'Budi Santoso',
         ],
-        'NPWPD-JBI-0002' => [
-            'nama_usaha' => 'Hotel Abadi Jambi',
-            'jenis_usaha' => 'hotel',
-            'alamat_usaha' => 'Jl. Sultan Agung No. 45, Kota Jambi',
+        '01.234.567.9-331' => [
+            'business_name' => 'Hotel Mega Jambi',
+            'business_type' => 'PBJT Perhotelan',
+            'owner_name' => 'PT Mega Jambi Sejahtera',
         ],
     ];
 
-    public function verifyNop(string $nop): array
+    public function findNop(string $nopNumber): ?array
     {
-        $data = $this->dummyNops[$nop] ?? null;
-
-        if ($data === null) {
-            return [
-                'valid' => false,
-                'nama_wp' => null,
-                'alamat_objek' => null,
-                'raw' => ['source' => 'dummy_bapenda', 'nop' => $nop, 'found' => false],
-            ];
-        }
-
-        return [
-            'valid' => true,
-            'nama_wp' => $data['nama_wp'],
-            'alamat_objek' => $data['alamat_objek'],
-            'raw' => ['source' => 'dummy_bapenda', 'nop' => $nop, 'found' => true, 'data' => $data],
-        ];
+        return self::NOP_DATASET[$nopNumber] ?? null;
     }
 
-    public function verifyNpwpd(string $npwpd): array
+    public function findNpwpd(string $npwpdNumber): ?array
     {
-        $data = $this->dummyNpwpds[$npwpd] ?? null;
+        return self::NPWPD_DATASET[$npwpdNumber] ?? null;
+    }
 
-        if ($data === null) {
+    public function getBillsForNop(string $nopNumber): array
+    {
+        if (! isset(self::NOP_DATASET[$nopNumber])) {
+            return [];
+        }
+
+        // Simulasi: 1 tagihan tahun berjalan, kadang ada tunggakan tahun lalu.
+        $currentYear = (int) date('Y');
+
+        $bills = [
+            $this->makeDummyBill(
+                taxPeriod: (string) $currentYear,
+                amountDue: 850_000,
+                dueDate: Carbon::create($currentYear, 9, 30),
+            ),
+        ];
+
+        // NOP kedua disimulasikan sudah lewat tenggat tahun lalu (ada denda)
+        if ($nopNumber === '3671010203040002') {
+            $bills[] = $this->makeDummyBill(
+                taxPeriod: (string) ($currentYear - 1),
+                amountDue: 1_200_000,
+                dueDate: Carbon::create($currentYear - 1, 9, 30),
+                simulateOverdue: true,
+            );
+        }
+
+        return $bills;
+    }
+
+    public function getBillsForNpwpd(string $npwpdNumber): array
+    {
+        if (! isset(self::NPWPD_DATASET[$npwpdNumber])) {
+            return [];
+        }
+
+        // Simulasi: tagihan bulan berjalan HANYA muncul untuk NPWPD tertentu
+        // (mensimulasikan bahwa user sudah/belum lapor bulanan di Lapor Pajak).
+        if ($npwpdNumber === '01.234.567.8-331') {
             return [
-                'valid' => false,
-                'nama_usaha' => null,
-                'jenis_usaha' => null,
-                'alamat_usaha' => null,
-                'raw' => ['source' => 'dummy_bapenda', 'npwpd' => $npwpd, 'found' => false],
+                $this->makeDummyBill(
+                    taxPeriod: date('Y-m'),
+                    amountDue: 450_000,
+                    dueDate: Carbon::now()->addDays(10),
+                ),
             ];
         }
 
+        // NPWPD lain: belum lapor bulan ini → tidak ada tagihan
+        return [];
+    }
+
+    // ── Helper ────────────────────────────────────────
+
+    private function makeDummyBill(
+        string $taxPeriod,
+        float $amountDue,
+        Carbon $dueDate,
+        bool $simulateOverdue = false,
+    ): array {
+        // Simulasi denda 2% per bulan keterlambatan (aturan umum PBB di banyak daerah),
+        // TAPI ini HANYA simulasi dummy — di real API, persentase & aturan denda
+        // sepenuhnya ditentukan & dihitung oleh sistem Bapenda, bukan aplikasi.
+        $penaltyAmount = 0.0;
+
+        if ($simulateOverdue || $dueDate->isPast()) {
+            $monthsLate = max(1, $dueDate->diffInMonths(now()));
+            $penaltyAmount = round($amountDue * 0.02 * $monthsLate, 2);
+        }
+
         return [
-            'valid' => true,
-            'nama_usaha' => $data['nama_usaha'],
-            'jenis_usaha' => $data['jenis_usaha'],
-            'alamat_usaha' => $data['alamat_usaha'],
-            'raw' => ['source' => 'dummy_bapenda', 'npwpd' => $npwpd, 'found' => true, 'data' => $data],
+            'tax_period' => $taxPeriod,
+            'amount_due' => $amountDue,
+            'penalty_amount' => $penaltyAmount,
+            'due_date' => $dueDate->toDateString(),
         ];
     }
 }

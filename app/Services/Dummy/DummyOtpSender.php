@@ -12,7 +12,6 @@ class DummyOtpSender implements OtpSenderInterface
     public function send(User $user, OtpChannel $channel, string $plainCode): bool
     {
         // Dummy: tidak benar-benar kirim email/SMS, cuma dicatat ke log
-        // supaya bisa dites manual selama integrasi asli (mis. Twilio/SMTP) belum ada.
         Log::info('[DummyOtpSender] OTP dikirim (simulasi)', [
             'id_user' => $user->id_user,
             'channel' => $channel->value,
