@@ -68,4 +68,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(AppNotification::class, 'id_user', 'id_user');
     }
+
+    public function otps(): HasMany
+    {
+        return $this->hasMany(Otp::class, 'id_user', 'id_user');
+    }
+
+    public function verificationLogs(): HasMany
+    {
+        return $this->hasMany(VerificationLog::class, 'id_user', 'id_user');
+    }
 }
