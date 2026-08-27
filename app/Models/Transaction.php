@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Models;
@@ -67,6 +66,6 @@ class Transaction extends Model
 
     public function isSuccess(): bool
     {
-        return $this->status === 'success';
+        return $this->status === TransactionStatus::Success;
     }
 }

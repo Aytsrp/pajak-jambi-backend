@@ -56,11 +56,11 @@ class Bill extends Model
 
     public function isOverdue(): bool
     {
-        return $this->status !== 'paid' && $this->due_date->isPast();
+        return $this->status !== BillStatus::Paid && $this->due_date->isPast();
     }
 
     public function isPaid(): bool
     {
-        return $this->status === 'paid';
+        return $this->status === BillStatus::Paid;
     }
 }
