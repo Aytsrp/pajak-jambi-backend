@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('is_verified')->default(false);
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
-
+            $table->softDeletes();
             $table->unique(['id_user', 'nop_number']);
         });
     }

@@ -26,6 +26,7 @@ Route::prefix('otp')->middleware('throttle:5,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
 
     Route::get('/summary', [TaxSummaryController::class, 'index']);
 

@@ -16,11 +16,21 @@ class NopRegistrationService
 
     /**
      * Daftarkan NOP baru ke akun user.
-     * @throws PemdaVerificationException kalau NOP tidak ditemukan di Bapenda
+     * @throws PemdaVerificationException
      */
     public function register(User $user, string $nopNumber, ?string $ipAddress = null): Nop
     {
-        // Cek dulu, jangan sampai user daftar NOP yang sama 2x
+        $existingTrashed = $user->nops()
+            ->onlyTrashed()
+            ->where('nop_number', $nopNumber)
+            ->first();
+
+        if ($existingTrashed) {
+            $existingTrashed->restore();
+            app(BillSyncService::class)->syncForNop($existingTrashed);
+            return $existingTrashed;
+        }
+
         $existing = $user->nops()->where('nop_number', $nopNumber)->first();
         if ($existing) {
             return $existing;
@@ -49,7 +59,6 @@ class NopRegistrationService
             'verified_at' => now(),
         ]);
 
-        // Langsung tarik tagihan begitu terdaftar, supaya user langsung lihat status
         app(BillSyncService::class)->syncForNop($nop);
 
         return $nop;

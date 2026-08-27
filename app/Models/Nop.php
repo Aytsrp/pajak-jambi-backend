@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Nop extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $primaryKey = 'id_nop';
 
@@ -28,6 +29,7 @@ class Nop extends Model
         return [
             'is_verified' => 'boolean',
             'verified_at' => 'datetime',
+            'deleted_at' => 'datetime',
         ];
     }
 

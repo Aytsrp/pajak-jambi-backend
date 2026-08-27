@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Models\User;
 use App\Services\Security\AccountSecurityService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -128,5 +130,46 @@ class AuthController extends Controller
         request()->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logout berhasil.']);
+    }
+
+    #[OA\Post(
+        path: "/api/change-password",
+        summary: "Ubah password (user sudah login, konfirmasi pakai password lama)",
+        tags: ["Auth"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["current_password", "new_password", "new_password_confirmation"],
+                properties: [
+                    new OA\Property(property: "current_password", type: "string", example: "passwordLama123"),
+                    new OA\Property(property: "new_password", type: "string", example: "passwordBaru456"),
+                    new OA\Property(property: "new_password_confirmation", type: "string", example: "passwordBaru456"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Password berhasil diubah, token lain (device lain) otomatis logout"),
+            new OA\Response(response: 422, description: "Password lama salah, atau password baru sama dengan lama"),
+        ]
+    )]
+    public function changePassword(ChangePasswordRequest $request)
+    {
+        $user = $request->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Password lama tidak sesuai.',
+            ]);
+        }
+
+        $user->update(['password' => $request->new_password]);
+
+        $currentTokenId = $request->user()->currentAccessToken()->id;
+        $user->tokens()->where('id', '!=', $currentTokenId)->delete();
+
+        return response()->json([
+            'message' => 'Password berhasil diubah. Sesi login di perangkat lain telah dikeluarkan.',
+        ]);
     }
 }

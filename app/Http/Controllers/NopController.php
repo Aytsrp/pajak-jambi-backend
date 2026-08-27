@@ -94,6 +94,44 @@ class NopController extends Controller
         return NopResource::make($nop);
     }
 
+    #[OA\Delete(
+        path: "/api/nops/{id}",
+        summary: "Hapus NOP dari akun. Jika sudah ada riwayat transaksi, NOP disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
+        tags: ["NOP (PBB-P2)"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer")),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "NOP berhasil dihapus/disembunyikan dari akun"),
+            new OA\Response(response: 404, description: "NOP tidak ditemukan / bukan milik user ini"),
+        ]
+    )]
+    public function destroy(Request $request, int $id)
+    {
+        $nop = $request->user()->nops()->findOrFail($id);
+
+        $hasTransactionHistory = $nop->bills()
+            ->whereHas('transactions')
+            ->exists();
+
+        if ($hasTransactionHistory) {
+            
+            $nop->delete();
+
+            return response()->json([
+                'message' => 'NOP berhasil dihapus dari daftar Anda. Riwayat transaksi tetap tersimpan.',
+            ]);
+        }
+
+        $nop->bills()->delete();
+        $nop->forceDelete();
+
+        return response()->json([
+            'message' => 'NOP berhasil dihapus dari akun Anda.',
+        ]);
+    }
+
     #[OA\Post(
         path: "/api/nops/{id}/refresh",
         summary: "Tarik ulang tagihan terbaru dari Bapenda untuk NOP ini",
