@@ -42,5 +42,5 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:10,1');
     Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh'])
         ->middleware('throttle:20,1');
-
+    Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
 });

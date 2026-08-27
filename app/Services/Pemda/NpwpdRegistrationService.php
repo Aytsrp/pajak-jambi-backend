@@ -19,7 +19,17 @@ class NpwpdRegistrationService
      */
     public function register(User $user, string $npwpdNumber, ?string $ipAddress = null): Npwpd
     {
-        // 1 user hanya boleh 1 NPWPD (constrained di DB juga)
+        $trashed = Npwpd::onlyTrashed()
+            ->where('id_user', $user->id_user)
+            ->where('npwpd_number', $npwpdNumber)
+            ->first();
+
+        if ($trashed) {
+            $trashed->restore();
+            app(BillSyncService::class)->syncForNpwpd($trashed);
+            return $trashed;
+        }
+
         if ($user->npwpd) {
             throw PemdaVerificationException::npwpdAlreadyRegistered();
         }

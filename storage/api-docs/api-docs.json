@@ -138,6 +138,57 @@
                 ]
             }
         },
+        "/api/change-password": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Ubah password (user sudah login, konfirmasi pakai password lama)",
+                "operationId": "540baf9b2324b156be71c57911de6714",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "current_password",
+                                    "new_password",
+                                    "new_password_confirmation"
+                                ],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string",
+                                        "example": "passwordLama123"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "example": "passwordBaru456"
+                                    },
+                                    "new_password_confirmation": {
+                                        "type": "string",
+                                        "example": "passwordBaru456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password berhasil diubah, token lain (device lain) otomatis logout"
+                    },
+                    "422": {
+                        "description": "Password lama salah, atau password baru sama dengan lama"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/nops": {
             "get": {
                 "tags": [
@@ -232,6 +283,36 @@
                         "bearerAuth": []
                     }
                 ]
+            },
+            "delete": {
+                "tags": [
+                    "NOP (PBB-P2)"
+                ],
+                "summary": "Hapus NOP dari akun. Jika sudah ada riwayat transaksi, NOP disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
+                "operationId": "a1b6bc4b31af620d173982893b813fc2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "NOP berhasil dihapus/disembunyikan dari akun"
+                    },
+                    "404": {
+                        "description": "NOP tidak ditemukan / bukan milik user ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/api/nops/{id}/refresh": {
@@ -315,6 +396,26 @@
                     },
                     "422": {
                         "description": "NPWPD tidak ditemukan di Bapenda, atau user sudah punya NPWPD lain"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "NPWPD (Pajak Usaha)"
+                ],
+                "summary": "Hapus NPWPD dari akun. Jika sudah ada riwayat transaksi, NPWPD disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
+                "operationId": "1d652acb9c1b96d3f19d605024f05a44",
+                "responses": {
+                    "200": {
+                        "description": "NPWPD berhasil dihapus/disembunyikan dari akun"
+                    },
+                    "404": {
+                        "description": "User belum punya NPWPD terdaftar"
                     }
                 },
                 "security": [

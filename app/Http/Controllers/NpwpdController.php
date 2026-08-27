@@ -79,6 +79,40 @@ class NpwpdController extends Controller
             ->setStatusCode(201);
     }
 
+    #[OA\Delete(
+    path: "/api/npwpd",
+    summary: "Hapus NPWPD dari akun. Jika sudah ada riwayat transaksi, NPWPD disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
+    tags: ["NPWPD (Pajak Usaha)"],
+    security: [["bearerAuth" => []]],
+    responses: [
+        new OA\Response(response: 200, description: "NPWPD berhasil dihapus/disembunyikan dari akun"),
+        new OA\Response(response: 404, description: "User belum punya NPWPD terdaftar"),
+    ]
+)]
+public function destroy(Request $request)
+{
+    $npwpd = $request->user()->npwpd()->firstOrFail();
+
+    $hasTransactionHistory = $npwpd->bills()
+        ->whereHas('transactions')
+        ->exists();
+
+    if ($hasTransactionHistory) {
+        $npwpd->delete();
+
+        return response()->json([
+            'message' => 'NPWPD berhasil dihapus dari akun Anda. Riwayat transaksi tetap tersimpan.',
+        ]);
+    }
+
+    $npwpd->bills()->delete();
+    $npwpd->forceDelete();
+
+    return response()->json([
+        'message' => 'NPWPD berhasil dihapus dari akun Anda.',
+    ]);
+}
+
     #[OA\Post(
         path: "/api/npwpd/refresh",
         summary: "Cek ulang ke Bapenda apakah ada tagihan baru (misal setelah lapor bulanan di Lapor Pajak)",
