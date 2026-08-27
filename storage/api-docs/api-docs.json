@@ -1,0 +1,547 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API Pajak Daerah Kota Jambi",
+        "description": "API untuk aplikasi pembayaran pajak daerah (PBB-P2 & Pajak Usaha) Kota Jambi. Data Bapenda/Dukcapil masih menggunakan dummy service.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Local development server"
+        }
+    ],
+    "paths": {
+        "/api/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Registrasi akun baru",
+                "operationId": "8a56853624e025573120a09a4c75d468",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nik",
+                                    "full_name",
+                                    "email",
+                                    "phone_number",
+                                    "password",
+                                    "password_confirmation",
+                                    "pin_number"
+                                ],
+                                "properties": {
+                                    "nik": {
+                                        "type": "string",
+                                        "example": "1671010101010001"
+                                    },
+                                    "full_name": {
+                                        "type": "string",
+                                        "example": "Ahmad Fauzi"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "ahmad@example.com"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "081234567890"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "pin_number": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registrasi berhasil"
+                    },
+                    "422": {
+                        "description": "Validasi gagal / NIK-email sudah dipakai"
+                    }
+                }
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login menggunakan NIK & password",
+                "operationId": "a3b306d14572d1f4bd6c064b3233e7b8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nik",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "nik": {
+                                        "type": "string",
+                                        "example": "1671010101010001"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login berhasil, return token"
+                    },
+                    "422": {
+                        "description": "NIK/password salah atau akun terkunci"
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout, hapus token aktif",
+                "operationId": "fe8f3429cd6979b3b4517e186505f9f9",
+                "responses": {
+                    "200": {
+                        "description": "Logout berhasil"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/nops": {
+            "get": {
+                "tags": [
+                    "NOP (PBB-P2)"
+                ],
+                "summary": "List semua NOP milik user yang login beserta tagihannya",
+                "operationId": "8832f8ea5866dadffb7416642cbbbcd7",
+                "responses": {
+                    "200": {
+                        "description": "Daftar NOP berhasil diambil"
+                    },
+                    "401": {
+                        "description": "Belum login / token tidak valid"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "NOP (PBB-P2)"
+                ],
+                "summary": "Daftarkan NOP baru (dicek eksistensinya ke Bapenda)",
+                "operationId": "69913bc64282cc8970a2ad86291b4aac",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nop_number"
+                                ],
+                                "properties": {
+                                    "nop_number": {
+                                        "type": "string",
+                                        "example": "3671010203040001"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "NOP berhasil didaftarkan, langsung berisi tagihan"
+                    },
+                    "422": {
+                        "description": "NOP tidak ditemukan di sistem Bapenda"
+                    },
+                    "429": {
+                        "description": "Terlalu banyak percobaan, coba lagi nanti"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/nops/{id}": {
+            "get": {
+                "tags": [
+                    "NOP (PBB-P2)"
+                ],
+                "summary": "Detail 1 NOP beserta tagihannya",
+                "operationId": "46b5374cf3eb9041d1984f4a9a811e4f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail NOP"
+                    },
+                    "404": {
+                        "description": "NOP tidak ditemukan / bukan milik user ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/nops/{id}/refresh": {
+            "post": {
+                "tags": [
+                    "NOP (PBB-P2)"
+                ],
+                "summary": "Tarik ulang tagihan terbaru dari Bapenda untuk NOP ini",
+                "operationId": "02dc18bf0a199d54876c65c0d3983f87",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tagihan berhasil disinkron ulang"
+                    },
+                    "404": {
+                        "description": "NOP tidak ditemukan / bukan milik user ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/npwpd": {
+            "get": {
+                "tags": [
+                    "NPWPD (Pajak Usaha)"
+                ],
+                "summary": "Ambil NPWPD milik user yang login (1 user maksimal 1 NPWPD)",
+                "operationId": "b937cc74cf080105727bf0bba9b1bd70",
+                "responses": {
+                    "200": {
+                        "description": "Data NPWPD, atau data: null kalau belum daftar"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "NPWPD (Pajak Usaha)"
+                ],
+                "summary": "Daftarkan NPWPD (dicek eksistensinya ke Bapenda)",
+                "operationId": "2ce936cddf5b15e2a5b947fc0533cede",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "npwpd_number"
+                                ],
+                                "properties": {
+                                    "npwpd_number": {
+                                        "type": "string",
+                                        "example": "01.234.567.8-331"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "NPWPD berhasil didaftarkan"
+                    },
+                    "422": {
+                        "description": "NPWPD tidak ditemukan di Bapenda, atau user sudah punya NPWPD lain"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/npwpd/refresh": {
+            "post": {
+                "tags": [
+                    "NPWPD (Pajak Usaha)"
+                ],
+                "summary": "Cek ulang ke Bapenda apakah ada tagihan baru (misal setelah lapor bulanan di Lapor Pajak)",
+                "operationId": "141ffa824e589287959de1ac06dde6cd",
+                "responses": {
+                    "200": {
+                        "description": "Hasil sync, termasuk meta.has_new_bill"
+                    },
+                    "404": {
+                        "description": "User belum punya NPWPD terdaftar"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/otp/request": {
+            "post": {
+                "tags": [
+                    "OTP"
+                ],
+                "summary": "Minta kode OTP dikirim (unlock akun / reset password / reset PIN)",
+                "operationId": "feed448e682272a81102c1707af7fc88",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nik",
+                                    "purpose",
+                                    "channel"
+                                ],
+                                "properties": {
+                                    "nik": {
+                                        "type": "string",
+                                        "example": "1671010101010001"
+                                    },
+                                    "purpose": {
+                                        "type": "string",
+                                        "example": "reset_password",
+                                        "enum": [
+                                            "unlock_account",
+                                            "reset_password",
+                                            "reset_pin"
+                                        ]
+                                    },
+                                    "channel": {
+                                        "type": "string",
+                                        "example": "email",
+                                        "enum": [
+                                            "email",
+                                            "sms"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Kode OTP dikirim (di dummy: dicatat ke storage/logs/laravel.log)"
+                    },
+                    "422": {
+                        "description": "NIK tidak ditemukan"
+                    },
+                    "429": {
+                        "description": "Terlalu sering meminta OTP"
+                    }
+                }
+            }
+        },
+        "/api/otp/verify": {
+            "post": {
+                "tags": [
+                    "OTP"
+                ],
+                "summary": "Verifikasi kode OTP — sekaligus eksekusi unlock/reset password/reset PIN",
+                "operationId": "10b95f0bedd736952b4e40a44716d958",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "nik",
+                                    "purpose",
+                                    "code"
+                                ],
+                                "properties": {
+                                    "nik": {
+                                        "type": "string",
+                                        "example": "1671010101010001"
+                                    },
+                                    "purpose": {
+                                        "type": "string",
+                                        "example": "reset_password",
+                                        "enum": [
+                                            "unlock_account",
+                                            "reset_password",
+                                            "reset_pin"
+                                        ]
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    },
+                                    "new_password": {
+                                        "description": "Wajib diisi jika purpose = reset_password",
+                                        "type": "string",
+                                        "example": "passwordBaru123",
+                                        "nullable": true
+                                    },
+                                    "new_password_confirmation": {
+                                        "type": "string",
+                                        "example": "passwordBaru123",
+                                        "nullable": true
+                                    },
+                                    "new_pin": {
+                                        "description": "Wajib diisi jika purpose = reset_pin",
+                                        "type": "string",
+                                        "example": "654321",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP valid, aksi berhasil dieksekusi"
+                    },
+                    "422": {
+                        "description": "Kode salah / kedaluwarsa / terlalu banyak percobaan"
+                    }
+                }
+            }
+        },
+        "/api/summary": {
+            "get": {
+                "tags": [
+                    "Summary"
+                ],
+                "summary": "Ringkasan total tagihan pajak (PBB + Pajak Usaha) milik user yang login",
+                "operationId": "ec38b23317fb9a025957c06535edad8a",
+                "responses": {
+                    "200": {
+                        "description": "Ringkasan tagihan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "total_tagihan": {
+                                            "type": "number",
+                                            "example": 850000
+                                        },
+                                        "jumlah_tagihan_belum_dibayar": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "ada_tunggakan_lewat_tenggat": {
+                                            "type": "boolean",
+                                            "example": false
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "Sanctum Token",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Auth"
+        },
+        {
+            "name": "NOP (PBB-P2)",
+            "description": "NOP (PBB-P2)"
+        },
+        {
+            "name": "NPWPD (Pajak Usaha)",
+            "description": "NPWPD (Pajak Usaha)"
+        },
+        {
+            "name": "OTP",
+            "description": "OTP"
+        },
+        {
+            "name": "Summary",
+            "description": "Summary"
+        }
+    ]
+}

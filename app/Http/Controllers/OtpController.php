@@ -10,6 +10,7 @@ use App\Http\Requests\VerifyOtpRequest;
 use App\Models\User;
 use App\Services\Security\AccountSecurityService;
 use Illuminate\Validation\ValidationException;
+use OpenApi\Attributes as OA;
 
 class OtpController extends Controller
 {
@@ -17,6 +18,27 @@ class OtpController extends Controller
         private readonly AccountSecurityService $accountSecurity,
     ) {}
 
+    #[OA\Post(
+        path: "/api/otp/request",
+        summary: "Minta kode OTP dikirim (unlock akun / reset password / reset PIN)",
+        tags: ["OTP"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["nik", "purpose", "channel"],
+                properties: [
+                    new OA\Property(property: "nik", type: "string", example: "1671010101010001"),
+                    new OA\Property(property: "purpose", type: "string", enum: ["unlock_account", "reset_password", "reset_pin"], example: "reset_password"),
+                    new OA\Property(property: "channel", type: "string", enum: ["email", "sms"], example: "email"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Kode OTP dikirim (di dummy: dicatat ke storage/logs/laravel.log)"),
+            new OA\Response(response: 422, description: "NIK tidak ditemukan"),
+            new OA\Response(response: 429, description: "Terlalu sering meminta OTP"),
+        ]
+    )]
     public function request(RequestOtpRequest $request)
     {
         $user = User::where('nik', $request->nik)->firstOrFail();
@@ -25,14 +47,35 @@ class OtpController extends Controller
 
         $this->accountSecurity->generateOtp($user, $purpose, $channel);
 
-        // Pesan sengaja generik, tidak sebut "berhasil ke email X" secara detail
-        // untuk hindari kebocoran info kontak user ke pihak yang tidak berhak.
         return response()->json([
             'message' => 'Kode OTP telah dikirim. Kode berlaku selama '
                 . config('security.otp.expiry_minutes') . ' menit.',
         ]);
     }
 
+    #[OA\Post(
+        path: "/api/otp/verify",
+        summary: "Verifikasi kode OTP — sekaligus eksekusi unlock/reset password/reset PIN",
+        tags: ["OTP"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["nik", "purpose", "code"],
+                properties: [
+                    new OA\Property(property: "nik", type: "string", example: "1671010101010001"),
+                    new OA\Property(property: "purpose", type: "string", enum: ["unlock_account", "reset_password", "reset_pin"], example: "reset_password"),
+                    new OA\Property(property: "code", type: "string", example: "123456"),
+                    new OA\Property(property: "new_password", type: "string", nullable: true, example: "passwordBaru123", description: "Wajib diisi jika purpose = reset_password"),
+                    new OA\Property(property: "new_password_confirmation", type: "string", nullable: true, example: "passwordBaru123"),
+                    new OA\Property(property: "new_pin", type: "string", nullable: true, example: "654321", description: "Wajib diisi jika purpose = reset_pin"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "OTP valid, aksi berhasil dieksekusi"),
+            new OA\Response(response: 422, description: "Kode salah / kedaluwarsa / terlalu banyak percobaan"),
+        ]
+    )]
     public function verify(VerifyOtpRequest $request)
     {
         $user = User::where('nik', $request->nik)->firstOrFail();
@@ -49,7 +92,7 @@ class OtpController extends Controller
         match ($purpose) {
             OtpPurpose::ResetPassword => $user->update(['password' => $request->new_password]),
             OtpPurpose::ResetPin => $user->update(['pin_number' => $request->new_pin]),
-            OtpPurpose::UnlockAccount => null, // sudah di-handle di dalam verifyOtp()
+            OtpPurpose::UnlockAccount => null,
         };
 
         return response()->json([
