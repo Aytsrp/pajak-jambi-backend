@@ -573,6 +573,141 @@
                 }
             }
         },
+        "/api/payment-methods": {
+            "get": {
+                "tags": [
+                    "Payment Methods"
+                ],
+                "summary": "List metode pembayaran tersimpan milik user",
+                "operationId": "a2d7aac6f16fe547c4e555dac9453a47",
+                "responses": {
+                    "200": {
+                        "description": "Daftar metode pembayaran"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Payment Methods"
+                ],
+                "summary": "Tambah metode pembayaran baru",
+                "operationId": "072cfb698e4a9cbb861015cce40c2d54",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "type",
+                                    "provider"
+                                ],
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "example": "e_wallet",
+                                        "enum": [
+                                            "credit_card",
+                                            "e_wallet",
+                                            "bank_transfer",
+                                            "qris"
+                                        ]
+                                    },
+                                    "provider": {
+                                        "type": "string",
+                                        "example": "OVO"
+                                    },
+                                    "masked_number": {
+                                        "type": "string",
+                                        "example": "****1234"
+                                    },
+                                    "is_default": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Metode pembayaran tersimpan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/payment-methods/{id}/set-default": {
+            "post": {
+                "tags": [
+                    "Payment Methods"
+                ],
+                "summary": "Jadikan metode ini sebagai default",
+                "operationId": "9f35ce82ae6af46b0c92121a04531c76",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil diset sebagai default"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/payment-methods/{id}": {
+            "delete": {
+                "tags": [
+                    "Payment Methods"
+                ],
+                "summary": "Hapus metode pembayaran",
+                "operationId": "5e7d54ac883ef4d81eb43da15961a581",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil dihapus"
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan / bukan milik user ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/summary": {
             "get": {
                 "tags": [
@@ -612,6 +747,227 @@
                     }
                 ]
             }
+        },
+        "/api/transactions/initiate": {
+            "post": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Langkah 1: pilih tagihan + metode bayar, buat transaksi PENDING",
+                "operationId": "864dd53d9f6d9fb640db98f3e7a626a0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_bill",
+                                    "id_payment",
+                                    "idempotency_key"
+                                ],
+                                "properties": {
+                                    "id_bill": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "id_payment": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "idempotency_key": {
+                                        "type": "string",
+                                        "example": "a1b2c3d4-uuid-dari-flutter"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Transaksi PENDING dibuat, tampilkan rincian ke user"
+                    },
+                    "404": {
+                        "description": "Tagihan/metode bayar tidak ditemukan"
+                    },
+                    "422": {
+                        "description": "Tagihan sudah lunas"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/transactions/{id}/confirm-pin": {
+            "post": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Langkah 2: konfirmasi PIN, eksekusi pembayaran",
+                "operationId": "879ead0586f1f62cebe3e772e05e2d09",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "pin"
+                                ],
+                                "properties": {
+                                    "pin": {
+                                        "type": "string",
+                                        "example": "123456"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pembayaran berhasil, bill jadi lunas, bukti tersedia"
+                    },
+                    "402": {
+                        "description": "Gateway menolak pembayaran"
+                    },
+                    "422": {
+                        "description": "PIN salah / transaksi bukan pending"
+                    },
+                    "423": {
+                        "description": "PIN terkunci karena terlalu banyak percobaan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/transactions": {
+            "get": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Riwayat transaksi, dengan filter jenis pajak & rentang tanggal",
+                "operationId": "6581469356772e7a74a0d79897544f1a",
+                "parameters": [
+                    {
+                        "name": "tax_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pbb",
+                                "pajak_usaha",
+                                "bphtb"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar riwayat transaksi"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/transactions/{id}": {
+            "get": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Detail 1 transaksi",
+                "operationId": "b3d11351fb6ea87ee797d24314e3b7fa",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail transaksi"
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan / bukan milik user ini"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/transactions/{id}/proof": {
+            "get": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Unduh/lihat bukti pembayaran (dummy: JSON representasi bukti)",
+                "operationId": "5014cd7d458bb7010206bb64c5c414e9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Data bukti pembayaran"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -641,8 +997,16 @@
             "description": "OTP"
         },
         {
+            "name": "Payment Methods",
+            "description": "Payment Methods"
+        },
+        {
             "name": "Summary",
             "description": "Summary"
+        },
+        {
+            "name": "Transactions",
+            "description": "Transactions"
         }
     ]
 }

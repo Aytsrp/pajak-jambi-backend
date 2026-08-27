@@ -20,6 +20,7 @@ class Transaction extends Model
         'id_bill',
         'id_payment',
         'transaction_ref',
+        'idempotency_key',
         'tax_type',
         'reference_type',
         'reference_id',

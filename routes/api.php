@@ -4,7 +4,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NopController;
 use App\Http\Controllers\NpwpdController;
 use App\Http\Controllers\OtpController;
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TaxSummaryController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────────
@@ -43,4 +45,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh'])
         ->middleware('throttle:20,1');
     Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
+
+    Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+    Route::post('/payment-methods', [PaymentMethodController::class, 'store']);
+    Route::post('/payment-methods/{id}/set-default', [PaymentMethodController::class, 'setDefault']);
+    Route::delete('/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
+
+    Route::post('/transactions/initiate', [TransactionController::class, 'initiate'])
+        ->middleware('throttle:10,1');
+    Route::post('/transactions/{id}/confirm-pin', [TransactionController::class, 'confirmPin'])
+        ->middleware('throttle:10,1');
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::get('/transactions/{id}', [TransactionController::class, 'show']);
+    Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])
+        ->name('transactions.proof');
 });

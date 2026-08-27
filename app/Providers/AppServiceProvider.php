@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Contracts\OtpSenderInterface;
+use App\Contracts\PaymentGatewayInterface;
 use App\Models\Nop;
 use App\Models\Npwpd;
 use App\Services\Dummy\DummyOtpSender;
+use App\Services\Dummy\DummyPaymentGatewayService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(OtpSenderInterface::class, DummyOtpSender::class);
+        $this->app->bind(PaymentGatewayInterface::class, DummyPaymentGatewayService::class);
     }
 
     public function boot(): void
