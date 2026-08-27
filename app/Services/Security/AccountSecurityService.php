@@ -119,6 +119,7 @@ class AccountSecurityService
 
         $otp->update(['used_at' => now()]);
 
+       
         match ($purpose) {
             OtpPurpose::UnlockAccount => $this->resetLoginAttempts($user),
             OtpPurpose::ResetPin => $this->resetPinAttempts($user),
