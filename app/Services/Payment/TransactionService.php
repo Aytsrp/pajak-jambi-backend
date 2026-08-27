@@ -6,6 +6,7 @@ use App\Contracts\PaymentGatewayInterface;
 use App\Enums\BillStatus;
 use App\Enums\TaxType;
 use App\Enums\TransactionStatus;
+use App\Events\TransactionCompleted;
 use App\Exceptions\TransactionException;
 use App\Models\Bill;
 use App\Models\Transaction;
@@ -101,6 +102,8 @@ class TransactionService
 
             if (! $result['success']) {
                 $transaction->update(['status' => TransactionStatus::Failed]);
+                TransactionCompleted::dispatch($transaction->fresh()); // ← tambahan
+
                 throw TransactionException::gatewayFailed($result['message']);
             }
 
@@ -113,7 +116,10 @@ class TransactionService
 
             $transaction->bill->update(['status' => BillStatus::Paid]);
 
-            return $transaction->fresh(['bill', 'payment']);
+            $freshTransaction = $transaction->fresh(['bill', 'payment']);
+            TransactionCompleted::dispatch($freshTransaction); // ← tambahan
+
+            return $freshTransaction;
         });
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NopController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NpwpdController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PaymentMethodController;
@@ -59,4 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
     Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])
         ->name('transactions.proof');
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 });
