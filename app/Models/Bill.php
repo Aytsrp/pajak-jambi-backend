@@ -19,6 +19,7 @@ class Bill extends Model
         'billable_type',
         'billable_id',
         'tax_period',
+        'tax_component',
         'amount_due',
         'penalty_amount',
         'total_amount',

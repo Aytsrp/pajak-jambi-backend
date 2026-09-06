@@ -90,35 +90,36 @@ class DummyBapendaService implements BapendaServiceInterface
             return [];
         }
 
-        // Simulasi: tagihan bulan berjalan HANYA muncul untuk NPWPD tertentu
-        // (mensimulasikan bahwa user sudah/belum lapor bulanan di Lapor Pajak).
         if ($npwpdNumber === '01.234.567.8-331') {
             return [
                 $this->makeDummyBill(
                     taxPeriod: date('Y-m'),
                     amountDue: 450_000,
                     dueDate: Carbon::now()->addDays(10),
+                    taxComponent: 'pbjt_makanan_minuman',
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: date('Y-m'),
+                    amountDue: 275_000,
+                    dueDate: Carbon::now()->addDays(10),
+                    taxComponent: 'pbjt_tenaga_listrik',
                 ),
             ];
         }
 
-        // NPWPD lain: belum lapor bulan ini → tidak ada tagihan
         return [];
     }
 
     // ── Helper ────────────────────────────────────────
-
+    
     private function makeDummyBill(
         string $taxPeriod,
         float $amountDue,
         Carbon $dueDate,
+        ?string $taxComponent = null,
         bool $simulateOverdue = false,
     ): array {
-        // Simulasi denda 2% per bulan keterlambatan (aturan umum PBB di banyak daerah),
-        // TAPI ini HANYA simulasi dummy — di real API, persentase & aturan denda
-        // sepenuhnya ditentukan & dihitung oleh sistem Bapenda, bukan aplikasi.
         $penaltyAmount = 0.0;
-
         if ($simulateOverdue || $dueDate->isPast()) {
             $monthsLate = max(1, $dueDate->diffInMonths(now()));
             $penaltyAmount = round($amountDue * 0.02 * $monthsLate, 2);
@@ -126,6 +127,7 @@ class DummyBapendaService implements BapendaServiceInterface
 
         return [
             'tax_period' => $taxPeriod,
+            'tax_component' => $taxComponent, // ← tambahan
             'amount_due' => $amountDue,
             'penalty_amount' => $penaltyAmount,
             'due_date' => $dueDate->toDateString(),

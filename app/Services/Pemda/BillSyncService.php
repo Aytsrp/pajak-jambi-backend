@@ -34,15 +34,11 @@ class BillSyncService
     private function upsertBills($billable, array $bills): void
     {
         foreach ($bills as $data) {
-            /** @var Bill $existing */
             $existing = $billable->bills()
                 ->where('tax_period', $data['tax_period'])
+                ->where('tax_component', $data['tax_component'] ?? null)
                 ->first();
 
-            // Kalau sudah lunas, jangan ditimpa lagi oleh hasil sync
-            // (status 'paid' di aplikasi kita adalah sumber kebenaran lokal
-            // setelah transaksi sukses — sync dari Bapenda tidak boleh menimpanya
-            // balik ke unpaid kalau ada delay data di sisi mereka).
             if ($existing && $existing->status === BillStatus::Paid) {
                 continue;
             }
@@ -52,7 +48,10 @@ class BillSyncService
             $status = $dueDate->isPast() ? BillStatus::Overdue : BillStatus::Unpaid;
 
             $billable->bills()->updateOrCreate(
-                ['tax_period' => $data['tax_period']],
+                [
+                    'tax_period' => $data['tax_period'],
+                    'tax_component' => $data['tax_component'] ?? null,
+                ],
                 [
                     'amount_due' => $data['amount_due'],
                     'penalty_amount' => $data['penalty_amount'],
