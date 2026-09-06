@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PemdaVerificationException;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Models\User;
+use App\Services\Pemda\NikVerificationService;
 use App\Services\Security\AccountSecurityService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,6 +18,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly AccountSecurityService $accountSecurity,
+        private readonly NikVerificationService $nikVerification,
     ) {}
 
     #[OA\Post(
@@ -45,7 +48,15 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request)
     {
-        $user = User::create($request->validated());
+        try {
+            $this->nikVerification->verify($request->nik, $request->ip());
+        } catch (PemdaVerificationException $e) {
+            throw ValidationException::withMessages(['nik' => $e->getMessage()]);
+        }
+
+        $user = User::create(array_merge($request->validated(), [
+            'is_nik_verified' => true,
+        ]));
 
         $token = $user->createToken('mobile')->plainTextToken;
 

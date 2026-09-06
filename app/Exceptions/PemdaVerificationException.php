@@ -20,4 +20,9 @@ class PemdaVerificationException extends Exception
     {
         return new self('Akun ini sudah memiliki NPWPD terdaftar. Satu akun hanya boleh memiliki satu NPWPD.', 422);
     }
+
+    public static function nikNotFound(string $nik): self
+    {
+        return new self("NIK {$nik} tidak ditemukan di sistem Dukcapil.", 404);
+    }
 }
