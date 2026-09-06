@@ -8,6 +8,7 @@ use App\Http\Requests\InitiateTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\Transaction\TransactionService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -96,7 +97,7 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $query = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn ($q) => $q->withTrashed()])
+            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
             ->latest('id_transactions');
 
         if ($request->filled('tax_type')) {
@@ -128,7 +129,7 @@ class TransactionController extends Controller
     public function show(Request $request, int $id)
     {
         $transaction = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn ($q) => $q->withTrashed()])
+            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
             ->findOrFail($id);
 
         return TransactionResource::make($transaction);
@@ -136,30 +137,33 @@ class TransactionController extends Controller
 
     #[OA\Get(
         path: "/api/transactions/{id}/proof",
-        summary: "Unduh/lihat bukti pembayaran (dummy: JSON representasi bukti)",
+        summary: "Unduh bukti pembayaran dalam format PDF",
         tags: ["Transactions"],
         security: [["bearerAuth" => []]],
         parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
-        responses: [new OA\Response(response: 200, description: "Data bukti pembayaran")]
+        responses: [
+            new OA\Response(response: 200, description: "File PDF bukti pembayaran", content: new OA\MediaType(mediaType: "application/pdf")),
+            new OA\Response(response: 404, description: "Transaksi tidak ditemukan / belum sukses"),
+        ]
     )]
     public function proof(Request $request, int $id)
     {
         $transaction = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn ($q) => $q->withTrashed()])
+            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
             ->where('status', 'success')
             ->findOrFail($id);
 
-        // Dummy: return data terstruktur bukti pembayaran sebagai JSON.
-        // Nanti bisa diganti generate PDF asli (mis. pakai package barryvdh/laravel-dompdf)
-        // supaya bisa benar-benar "diunduh" & "dibagikan" via fitur share OS sesuai PRD.
-        return response()->json([
-            'transaction_ref' => $transaction->transaction_ref,
-            'gateway_ref' => $transaction->gateway_ref,
-            'tax_type' => $transaction->tax_type->label(),
-            'object_name' => $transaction->reference?->object_name ?? $transaction->reference?->business_name,
-            'amount' => (float) $transaction->amount,
-            'payment_method' => $transaction->payment?->provider,
-            'paid_at' => $transaction->paid_at,
+        $objectName = $transaction->reference?->object_name ?? $transaction->reference?->business_name ?? '-';
+
+        $pdf = Pdf::loadView('pdf.proof', [
+            'transaction' => $transaction,
+            'objectName' => $objectName,
         ]);
+
+        $filename = "bukti-{$transaction->transaction_ref}.pdf";
+
+        return $request->boolean('download')
+        ? $pdf->download($filename)
+        : $pdf->stream($filename);
     }
 }
