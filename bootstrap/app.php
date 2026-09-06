@@ -3,10 +3,10 @@
 use App\Exceptions\PemdaVerificationException;
 use App\Exceptions\OtpException;
 use App\Exceptions\TransactionException;
+use App\Http\Middleware\EnsureHasTaxObject;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,8 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'has.tax.object' => EnsureHasTaxObject::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (PemdaVerificationException $e, $request) {
@@ -28,6 +30,6 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (TransactionException $e, $request) {
-    return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
-});
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
+        });
     })->create();

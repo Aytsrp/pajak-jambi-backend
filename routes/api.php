@@ -20,13 +20,15 @@ Route::post('/register', [AuthController::class, 'register'])
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1');
 
+Route::get('/me/onboarding-status', [TaxSummaryController::class, 'onboardingstatus']);
+
 Route::prefix('otp')->middleware('throttle:5,1')->group(function () {
     Route::post('/request', [OtpController::class, 'request']);
     Route::post('/verify', [OtpController::class, 'verify'])
         ->middleware('throttle:10,1');
 });
 
-Route::prefix('h2h/{bank_code}')->group(function (){
+Route::prefix('h2h/{bank_code}')->group(function () {
     Route::post('/inquiry', [BankH2HController::class, 'inquiry']);
     Route::post('/payment', [BankH2HController::class, 'payment']);
 });
@@ -61,8 +63,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payment-methods/{id}/set-default', [PaymentMethodController::class, 'setDefault']);
     Route::delete('/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
 
-    Route::post('/transactions/initiate', [TransactionController::class, 'initiate'])
-        ->middleware('throttle:10,1');
+    Route::middleware(['auth:sanctum', 'has.tax.object'])->group(function () {
+        Route::post('/transactions/initiate', [TransactionController::class, 'initiate']);
+    });
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
     Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])

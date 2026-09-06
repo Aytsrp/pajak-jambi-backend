@@ -50,7 +50,18 @@ class TaxSummaryController extends Controller
         return response()->json([
             'total_tagihan' => (float) $unpaidBills->sum('total_amount'),
             'jumlah_tagihan_belum_dibayar' => $unpaidBills->count(),
-            'ada_tunggakan_lewat_tenggat' => $unpaidBills->contains(fn ($b) => $b->status === BillStatus::Overdue),
+            'ada_tunggakan_lewat_tenggat' => $unpaidBills->contains(fn($b) => $b->status === BillStatus::Overdue),
+        ]);
+    }
+
+    public function onboardingStatus(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'has_nop' => $user->nops()->exists(),
+            'has_npwpd' => $user->npwpd()->exists(),
+            'onboarding_complete' => $user->nops()->exists() || $user->npwpd()->exists(),
         ]);
     }
 }
