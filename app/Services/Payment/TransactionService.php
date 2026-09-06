@@ -2,35 +2,36 @@
 
 namespace App\Services\Transaction;
 
-use App\Contracts\PaymentGatewayInterface;
+use App\Contracts\QrisGatewayInterface;
+use App\Enums\BankCode;
 use App\Enums\BillStatus;
+use App\Enums\PaymentChannel;
 use App\Enums\TaxType;
 use App\Enums\TransactionStatus;
-use App\Events\TransactionCompleted;
 use App\Exceptions\TransactionException;
 use App\Models\Bill;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Security\AccountSecurityService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use App\Services\BankGatewayManager;
 use Illuminate\Support\Str;
 
 class TransactionService
 {
     public function __construct(
-        private readonly PaymentGatewayInterface $gateway,
-        private readonly AccountSecurityService $accountSecurity,
+        private readonly BankGatewayManager $bankManager,
+        private readonly QrisGatewayInterface $qrisGateway,
     ) {}
 
     /**
-     * Langkah 1: user pilih tagihan + metode bayar → buat transaksi PENDING.
-     * Belum ada uang bergerak sama sekali di titik ini.
-     *
      * @throws TransactionException
      */
-    public function initiate(User $user, int $billId, int $paymentId, string $idempotencyKey): Transaction
-    {
+    public function initiate(
+        User $user,
+        int $billId,
+        PaymentChannel $channel,
+        ?BankCode $bankCode,
+        string $idempotencyKey,
+    ): Transaction {
         $existing = Transaction::where('idempotency_key', $idempotencyKey)->first();
         if ($existing) {
             return $existing;
@@ -45,9 +46,8 @@ class TransactionService
             throw TransactionException::billAlreadyPaid();
         }
 
-        $payment = $user->payments()->find($paymentId);
-        if (! $payment) {
-            throw TransactionException::paymentMethodNotFound();
+        if ($channel === PaymentChannel::BankTransfer && ! $bankCode) {
+            throw TransactionException::bankCodeRequired();
         }
 
         $taxType = match ($bill->billable_type) {
@@ -56,70 +56,46 @@ class TransactionService
             default => throw TransactionException::billNotFound(),
         };
 
-        return Transaction::create([
+        $transaction = Transaction::create([
             'id_user' => $user->id_user,
             'id_bill' => $bill->id_bills,
-            'id_payment' => $payment->id_payment,
             'transaction_ref' => 'TRX-' . strtoupper(Str::random(10)),
             'idempotency_key' => $idempotencyKey,
             'tax_type' => $taxType,
             'reference_type' => $bill->billable_type,
             'reference_id' => $bill->billable_id,
             'amount' => $bill->total_amount,
+            'payment_channel' => $channel,
+            'bank_code' => $channel === PaymentChannel::BankTransfer ? $bankCode : null,
             'status' => TransactionStatus::Pending,
+        ]);
+
+        match ($channel) {
+            PaymentChannel::BankTransfer => $this->attachVirtualAccount($transaction, $bankCode),
+            PaymentChannel::Qris => $this->attachQris($transaction),
+        };
+
+        return $transaction->fresh();
+    }
+
+    private function attachVirtualAccount(Transaction $transaction, BankCode $bankCode): void
+    {
+        $vaData = $this->bankManager->driver($bankCode)->createVirtualAccount($transaction);
+
+        $transaction->update([
+            'va_number' => $vaData['va_number'],
+            'va_expired_at' => $vaData['expired_at'],
         ]);
     }
 
-    /**
-     * Langkah 2: konfirmasi PIN → eksekusi pembayaran via gateway.
-     *
-     * @throws TransactionException
-     */
-    public function confirmPin(User $user, Transaction $transaction, string $pin): Transaction
+    private function attachQris(Transaction $transaction): void
     {
-        if ($transaction->id_user !== $user->id_user) {
-            throw TransactionException::billNotFound();
-        }
+        $qrData = $this->qrisGateway->generate($transaction);
 
-        if ($transaction->status !== TransactionStatus::Pending) {
-            throw TransactionException::transactionNotPending();
-        }
-
-        if ($user->isPinLocked()) {
-            throw TransactionException::pinLocked();
-        }
-
-        if (! Hash::check($pin, $user->pin_number)) {
-            $this->accountSecurity->registerFailedPin($user);
-            throw TransactionException::invalidPin();
-        }
-
-        $this->accountSecurity->resetPinAttempts($user);
-
-        return DB::transaction(function () use ($user, $transaction) {
-            $payment = $transaction->payment;
-            $result = $this->gateway->charge($payment, (float) $transaction->amount);
-
-            if (! $result['success']) {
-                $transaction->update(['status' => TransactionStatus::Failed]);
-                TransactionCompleted::dispatch($transaction->fresh()); // ← tambahan
-
-                throw TransactionException::gatewayFailed($result['message']);
-            }
-
-            $transaction->update([
-                'status' => TransactionStatus::Success,
-                'gateway_ref' => $result['gateway_ref'],
-                'paid_at' => now(),
-                'proof_url' => route('transactions.proof', $transaction->id_transactions),
-            ]);
-
-            $transaction->bill->update(['status' => BillStatus::Paid]);
-
-            $freshTransaction = $transaction->fresh(['bill', 'payment']);
-            TransactionCompleted::dispatch($freshTransaction); // ← tambahan
-
-            return $freshTransaction;
-        });
+        $transaction->update([
+            'qr_string' => $qrData['qr_string'],
+            'qr_image_url' => $qrData['qr_image_url'],
+            'qr_expired_at' => $qrData['expired_at'],
+        ]);
     }
 }

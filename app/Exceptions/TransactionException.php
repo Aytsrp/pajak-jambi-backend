@@ -40,4 +40,9 @@ class TransactionException extends Exception
     {
         return new self("Pembayaran gagal: {$reason}", 402);
     }
+
+    public static function bankCodeRequired(): self
+    {
+        return new self('bank_code wajib diisi untuk metode pembayaran transfer bank.', 422);
+    }
 }

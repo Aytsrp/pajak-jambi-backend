@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\PaymentType;
+use App\Enums\PaymentChannel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +31,7 @@ class Payment extends Model
     {
         return [
             'is_default' => 'boolean',
-            'type' => PaymentType::class,
+            'type' => PaymentChannel::class,
         ];
     }
 

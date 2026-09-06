@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BankH2HController;
 use App\Http\Controllers\NopController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NpwpdController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TaxSummaryController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\QrisWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────────
@@ -23,6 +25,13 @@ Route::prefix('otp')->middleware('throttle:5,1')->group(function () {
     Route::post('/verify', [OtpController::class, 'verify'])
         ->middleware('throttle:10,1');
 });
+
+Route::prefix('h2h/{bank_code}')->group(function (){
+    Route::post('/inquiry', [BankH2HController::class, 'inquiry']);
+    Route::post('/payment', [BankH2HController::class, 'payment']);
+});
+
+Route::post('/webhooks/qris', [QrisWebhookController::class, 'handle']);
 
 // ── Authenticated (Sanctum) ─────────────────────────
 
@@ -53,8 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
 
     Route::post('/transactions/initiate', [TransactionController::class, 'initiate'])
-        ->middleware('throttle:10,1');
-    Route::post('/transactions/{id}/confirm-pin', [TransactionController::class, 'confirmPin'])
         ->middleware('throttle:10,1');
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);

@@ -13,9 +13,9 @@ return new class extends Migration
             $table->foreignId('id_user')
                 ->constrained('users', 'id_user')
                 ->cascadeOnDelete();
-            $table->enum('type', ['credit_card', 'e_wallet', 'bank_transfer', 'qris']);
+            $table->enum('type', ['bank_transfer']);
             $table->string('provider');
-            $table->string('token');
+            $table->string('token')->nullable()->change();
             $table->string('masked_number', 30)->nullable();
             $table->boolean('is_default')->default(false);
             $table->timestamps();

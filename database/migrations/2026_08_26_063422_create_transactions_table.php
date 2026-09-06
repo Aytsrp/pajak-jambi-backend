@@ -16,10 +16,14 @@ return new class extends Migration
             $table->foreignId('id_bill')
                 ->constrained('bills', 'id_bills')
                 ->restrictOnDelete();
-            $table->foreignId('id_payment')
-                ->nullable()
-                ->constrained('payments', 'id_payment')
-                ->nullOnDelete();
+            $table->foreignId('id_payment')->nullable();
+            $table->string('payment_channel', 20)->default('bank_transfer');
+            $table->string('bank_code', 20)->nullable();
+            $table->string('va_number', 30)->nullable()->unique();
+            $table->timestamp('va_expired_at')->nullable();
+            $table->text('qr_string')->nullable();
+            $table->string('qr_image_url')->nullable();
+            $table->timestamp('qr_expired_at')->nullable();
             $table->string('transaction_ref')->unique();
             $table->string('idempotency_key')->unique();
             $table->enum('tax_type', ['pbb', 'pajak_usaha', 'bphtb']);

@@ -22,7 +22,16 @@ class TransactionResource extends JsonResource
             'created_at' => $this->created_at,
             'bill' => new BillResource($this->whenLoaded('bill')),
             'payment_method' => new PaymentResource($this->whenLoaded('payment')),
-            'object_name' => $this->whenLoaded('reference', fn () => $this->reference?->object_name ?? $this->reference?->business_name),
+            'object_name' => $this->whenLoaded('reference', fn() => $this->reference?->object_name ?? $this->reference?->business_name),
+            'bank_code' => $this->bank_code?->value,
+            'bank_label' => $this->bank_code?->label(),
+            'va_number' => $this->va_number,
+            'va_expired_at' => $this->va_expired_at,
+            'payment_channel' => $this->payment_channel->value,
+            'payment_channel_label' => $this->payment_channel->label(),
+            'qr_string' => $this->qr_string,
+            'qr_image_url' => $this->qr_image_url,
+            'qr_expired_at' => $this->qr_expired_at,
         ];
     }
 }

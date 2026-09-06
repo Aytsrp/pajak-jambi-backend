@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\TransactionException;
-use App\Http\Requests\ConfirmPinRequest;
+use App\Enums\BankCode;
+use App\Enums\PaymentChannel;
 use App\Http\Requests\InitiateTransactionRequest;
 use App\Http\Resources\TransactionResource;
-use App\Models\Transaction;
 use App\Services\Transaction\TransactionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -42,14 +41,18 @@ class TransactionController extends Controller
     )]
     public function initiate(InitiateTransactionRequest $request)
     {
+        $channel = PaymentChannel::from($request->payment_channel);
+        $bankCode = $channel === PaymentChannel::BankTransfer ? BankCode::from($request->bank_code) : null;
+
         $transaction = $this->service->initiate(
             user: $request->user(),
             billId: $request->id_bill,
-            paymentId: $request->id_payment,
+            channel: $channel,
+            bankCode: $bankCode,
             idempotencyKey: $request->idempotency_key,
         );
 
-        return TransactionResource::make($transaction->load(['bill', 'payment']))
+        return TransactionResource::make($transaction->load('bill'))
             ->response()
             ->setStatusCode(201);
     }
@@ -73,14 +76,6 @@ class TransactionController extends Controller
             new OA\Response(response: 423, description: "PIN terkunci karena terlalu banyak percobaan"),
         ]
     )]
-    public function confirmPin(ConfirmPinRequest $request, int $id)
-    {
-        $transaction = Transaction::findOrFail($id);
-
-        $transaction = $this->service->confirmPin($request->user(), $transaction, $request->pin);
-
-        return TransactionResource::make($transaction);
-    }
 
     #[OA\Get(
         path: "/api/transactions",
@@ -163,7 +158,7 @@ class TransactionController extends Controller
         $filename = "bukti-{$transaction->transaction_ref}.pdf";
 
         return $request->boolean('download')
-        ? $pdf->download($filename)
-        : $pdf->stream($filename);
+            ? $pdf->download($filename)
+            : $pdf->stream($filename);
     }
 }
