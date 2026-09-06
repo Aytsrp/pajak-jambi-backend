@@ -13,6 +13,8 @@ use App\Models\Bill;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BankGatewayManager;
+use App\Services\Security\AccountSecurityService;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class TransactionService
@@ -20,6 +22,7 @@ class TransactionService
     public function __construct(
         private readonly BankGatewayManager $bankManager,
         private readonly QrisGatewayInterface $qrisGateway,
+        private readonly AccountSecurityService $accountSecurity,
     ) {}
 
     /**
@@ -30,6 +33,7 @@ class TransactionService
         int $billId,
         PaymentChannel $channel,
         ?BankCode $bankCode,
+        string $pin,
         string $idempotencyKey,
     ): Transaction {
         $existing = Transaction::where('idempotency_key', $idempotencyKey)->first();
@@ -37,15 +41,22 @@ class TransactionService
             return $existing;
         }
 
+        if ($user->isPinLocked()) {
+            throw TransactionException::pinLocked();
+        }
+        if (! Hash::check($pin, $user->pin_number)) {
+            $this->accountSecurity->registerFailedPin($user);
+            throw TransactionException::invalidPin();
+        }
+        $this->accountSecurity->resetPinAttempts($user);
+
         $bill = Bill::with('billable')->find($billId);
         if (! $bill || $bill->billable->id_user !== $user->id_user) {
             throw TransactionException::billNotFound();
         }
-
         if ($bill->status === BillStatus::Paid) {
             throw TransactionException::billAlreadyPaid();
         }
-
         if ($channel === PaymentChannel::BankTransfer && ! $bankCode) {
             throw TransactionException::bankCodeRequired();
         }

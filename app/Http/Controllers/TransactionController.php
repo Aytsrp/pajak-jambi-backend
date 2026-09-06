@@ -49,6 +49,7 @@ class TransactionController extends Controller
             billId: $request->id_bill,
             channel: $channel,
             bankCode: $bankCode,
+            pin: $request->pin,
             idempotencyKey: $request->idempotency_key,
         );
 

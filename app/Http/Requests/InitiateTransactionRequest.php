@@ -9,17 +9,18 @@ use Illuminate\Validation\Rule;
 
 class InitiateTransactionRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
         return [
             'id_bill' => ['required', 'integer'],
             'payment_channel' => ['required', Rule::in(array_column(PaymentChannel::cases(), 'value'))],
-            'bank_code' => [
-                'required_if:payment_channel,bank_transfer',
-                Rule::in(array_column(BankCode::cases(), 'value')),
-            ],
+            'bank_code' => ['required_if:payment_channel,bank_transfer', Rule::in(array_column(BankCode::cases(), 'value'))],
+            'pin' => ['required', 'digits:6'], // ← tambahan
             'idempotency_key' => ['required', 'string', 'max:100'],
         ];
     }
