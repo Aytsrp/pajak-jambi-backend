@@ -15,7 +15,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->enum('type', ['bank_transfer']);
             $table->string('provider');
-            $table->string('token')->nullable()->change();
+            $table->string('token')->nullable();
             $table->string('masked_number', 30)->nullable();
             $table->boolean('is_default')->default(false);
             $table->timestamps();
