@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\BapendaServiceInterface;
 use App\Exceptions\PemdaVerificationException;
 use App\Http\Requests\RegisterNopRequest;
 use App\Http\Resources\NopResource;
@@ -116,7 +117,7 @@ class NopController extends Controller
             ->exists();
 
         if ($hasTransactionHistory) {
-            
+
             $nop->delete();
 
             return response()->json([
@@ -130,6 +131,33 @@ class NopController extends Controller
         return response()->json([
             'message' => 'NOP berhasil dihapus dari akun Anda.',
         ]);
+    }
+
+    #[OA\Post(
+        path: "/api/nops/check",
+        summary: "Cek detail NOP ke Bapenda TANPA menyimpan (untuk ditampilkan sebelum user konfirmasi)",
+        tags: ["NOP (PBB-P2)"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(content: new OA\JsonContent(
+            required: ["nop_number"],
+            properties: [new OA\Property(property: "nop_number", type: "string", example: "3671010203040001")]
+        )),
+        responses: [
+            new OA\Response(response: 200, description: "Detail NOP ditemukan"),
+            new OA\Response(response: 404, description: "NOP tidak ditemukan di Bapenda"),
+        ]
+    )]
+    public function check(Request $request, BapendaServiceInterface $bapenda)
+    {
+        $request->validate(['nop_number' => ['required', 'string']]);
+
+        $data = $bapenda->findNop($request->nop_number);
+
+        if ($data === null) {
+            return response()->json(['message' => 'NOP tidak ditemukan di sistem Bapenda.'], 404);
+        }
+
+        return response()->json(['nop_number' => $request->nop_number, ...$data]);
     }
 
     #[OA\Post(
