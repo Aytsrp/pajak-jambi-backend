@@ -162,4 +162,38 @@ class TransactionController extends Controller
             ? $pdf->download($filename)
             : $pdf->stream($filename);
     }
+
+    #[OA\Get(
+        path: "/api/transactions/monthly-summary",
+        summary: "Total nominal transaksi SUKSES per bulan (untuk halaman Riwayat)",
+        tags: ["Transactions"],
+        security: [["bearerAuth" => []]],
+        parameters: [new OA\Parameter(name: "year", in: "query", schema: new OA\Schema(type: "integer"))],
+        responses: [new OA\Response(response: 200, description: "Total per bulan")]
+    )]
+    public function monthlySummary(Request $request)
+    {
+        $year = $request->integer('year', now()->year);
+
+        $rows = $request->user()->transactions()
+            ->selectRaw('EXTRACT(MONTH FROM paid_at) as month, SUM(amount) as total, COUNT(*) as count')
+            ->where('status', 'success')
+            ->whereYear('paid_at', $year)
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->keyBy(fn($row) => (int) $row->month);
+
+        $result = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $result[] = [
+                'month' => $m,
+                'month_label' => \Carbon\Carbon::create($year, $m, 1)->translatedFormat('F'),
+                'total_amount' => (float) ($rows[$m]->total ?? 0),
+                'transaction_count' => (int) ($rows[$m]->count ?? 0),
+            ];
+        }
+
+        return response()->json(['year' => $year, 'data' => $result]);
+    }
 }
