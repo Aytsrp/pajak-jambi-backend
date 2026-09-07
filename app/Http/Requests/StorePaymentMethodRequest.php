@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BankCode;
+use App\Enums\PaymentChannel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,10 +14,13 @@ class StorePaymentMethodRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', Rule::in(['credit_card', 'e_wallet', 'bank_transfer', 'qris'])],
-            'provider' => ['required', 'string', 'max:50'],
-            'token' => ['nullable', 'string'], // dummy: biar bisa dites manual tanpa SDK asli
-            'masked_number' => ['nullable', 'string', 'max:30'],
+            'type' => ['required', Rule::in(array_column(PaymentChannel::cases(), 'value'))],
+            'provider' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::in([...array_column(BankCode::cases(), 'value'), 'qris']),
+            ],
             'is_default' => ['sometimes', 'boolean'],
         ];
     }

@@ -14,7 +14,6 @@ class PaymentResource extends JsonResource
             'type' => $this->type->value,
             'type_label' => $this->type->label(),
             'provider' => $this->provider,
-            'masked_number' => $this->masked_number,
             'is_default' => $this->is_default,
         ];
     }

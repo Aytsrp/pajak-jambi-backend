@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Transaction;
+namespace App\Services\Payment;
 
 use App\Contracts\QrisGatewayInterface;
 use App\Enums\BankCode;
@@ -12,7 +12,7 @@ use App\Exceptions\TransactionException;
 use App\Models\Bill;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\BankGatewayManager;
+use App\Services\Payment\BankGatewayManager;
 use App\Services\Security\AccountSecurityService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -35,6 +35,7 @@ class TransactionService
         ?BankCode $bankCode,
         string $pin,
         string $idempotencyKey,
+        ?int $paymentId = null,
     ): Transaction {
         $existing = Transaction::where('idempotency_key', $idempotencyKey)->first();
         if ($existing) {
@@ -61,6 +62,14 @@ class TransactionService
             throw TransactionException::bankCodeRequired();
         }
 
+        $paymentMethod = null;
+        if ($paymentId !== null) {
+            $paymentMethod = $user->payments()->find($paymentId);
+            if (! $paymentMethod) {
+                throw TransactionException::paymentMethodNotFound();
+            }
+        }
+
         $taxType = match ($bill->billable_type) {
             'nop' => TaxType::Pbb,
             'npwpd' => TaxType::PajakUsaha,
@@ -70,6 +79,7 @@ class TransactionService
         $transaction = Transaction::create([
             'id_user' => $user->id_user,
             'id_bill' => $bill->id_bills,
+            'id_payment' => $paymentMethod?->id_payment,
             'transaction_ref' => 'TRX-' . strtoupper(Str::random(10)),
             'idempotency_key' => $idempotencyKey,
             'tax_type' => $taxType,

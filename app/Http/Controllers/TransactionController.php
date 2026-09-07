@@ -6,7 +6,7 @@ use App\Enums\BankCode;
 use App\Enums\PaymentChannel;
 use App\Http\Requests\InitiateTransactionRequest;
 use App\Http\Resources\TransactionResource;
-use App\Services\Transaction\TransactionService;
+use App\Services\Payment\TransactionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -51,9 +51,10 @@ class TransactionController extends Controller
             bankCode: $bankCode,
             pin: $request->pin,
             idempotencyKey: $request->idempotency_key,
+            paymentId: $request->id_payment,
         );
 
-        return TransactionResource::make($transaction->load('bill'))
+        return TransactionResource::make($transaction->load(['bill', 'payment']))
             ->response()
             ->setStatusCode(201);
     }

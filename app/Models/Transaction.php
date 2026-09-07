@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\BankCode;
+use App\Enums\PaymentChannel;
 use App\Enums\TaxType;
 use App\Enums\TransactionStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +31,13 @@ class Transaction extends Model
         'status',
         'proof_url',
         'paid_at',
+        'payment_channel',
+        'bank_code',
+        'va_number',
+        'va_expired_at',
+        'qr_string',
+        'qr_image_url',
+        'qr_expired_at',
     ];
 
     protected function casts(): array
@@ -38,6 +47,10 @@ class Transaction extends Model
             'paid_at' => 'datetime',
             'tax_type' => TaxType::class,
             'status' => TransactionStatus::class,
+            'payment_channel' => PaymentChannel::class,
+            'bank_code' => BankCode::class,
+            'va_expired_at' => 'datetime',
+            'qr_expired_at' => 'datetime',
         ];
     }
 

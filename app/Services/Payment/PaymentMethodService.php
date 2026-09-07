@@ -4,7 +4,6 @@ namespace App\Services\Payment;
 
 use App\Models\Payment;
 use App\Models\User;
-use Illuminate\Support\Str;
 
 class PaymentMethodService
 {
@@ -15,8 +14,6 @@ class PaymentMethodService
         $payment = $user->payments()->create([
             'type' => $data['type'],
             'provider' => $data['provider'],
-            'token' => $data['token'] ?? 'DUMMY-TOKEN-' . Str::random(20),
-            'masked_number' => $data['masked_number'] ?? null,
             'is_default' => $data['is_default'] ?? $isFirstMethod,
         ]);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\BapendaServiceInterface;
 use App\Exceptions\PemdaVerificationException;
 use App\Http\Requests\RegisterNpwpdRequest;
 use App\Http\Resources\NpwpdResource;
@@ -80,38 +81,38 @@ class NpwpdController extends Controller
     }
 
     #[OA\Delete(
-    path: "/api/npwpd",
-    summary: "Hapus NPWPD dari akun. Jika sudah ada riwayat transaksi, NPWPD disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
-    tags: ["NPWPD (Pajak Usaha)"],
-    security: [["bearerAuth" => []]],
-    responses: [
-        new OA\Response(response: 200, description: "NPWPD berhasil dihapus/disembunyikan dari akun"),
-        new OA\Response(response: 404, description: "User belum punya NPWPD terdaftar"),
-    ]
-)]
-public function destroy(Request $request)
-{
-    $npwpd = $request->user()->npwpd()->firstOrFail();
+        path: "/api/npwpd",
+        summary: "Hapus NPWPD dari akun. Jika sudah ada riwayat transaksi, NPWPD disembunyikan (bukan dihapus permanen) agar riwayat pembayaran tetap tersimpan",
+        tags: ["NPWPD (Pajak Usaha)"],
+        security: [["bearerAuth" => []]],
+        responses: [
+            new OA\Response(response: 200, description: "NPWPD berhasil dihapus/disembunyikan dari akun"),
+            new OA\Response(response: 404, description: "User belum punya NPWPD terdaftar"),
+        ]
+    )]
+    public function destroy(Request $request)
+    {
+        $npwpd = $request->user()->npwpd()->firstOrFail();
 
-    $hasTransactionHistory = $npwpd->bills()
-        ->whereHas('transactions')
-        ->exists();
+        $hasTransactionHistory = $npwpd->bills()
+            ->whereHas('transactions')
+            ->exists();
 
-    if ($hasTransactionHistory) {
-        $npwpd->delete();
+        if ($hasTransactionHistory) {
+            $npwpd->delete();
+
+            return response()->json([
+                'message' => 'NPWPD berhasil dihapus dari akun Anda. Riwayat transaksi tetap tersimpan.',
+            ]);
+        }
+
+        $npwpd->bills()->delete();
+        $npwpd->forceDelete();
 
         return response()->json([
-            'message' => 'NPWPD berhasil dihapus dari akun Anda. Riwayat transaksi tetap tersimpan.',
+            'message' => 'NPWPD berhasil dihapus dari akun Anda.',
         ]);
     }
-
-    $npwpd->bills()->delete();
-    $npwpd->forceDelete();
-
-    return response()->json([
-        'message' => 'NPWPD berhasil dihapus dari akun Anda.',
-    ]);
-}
 
     #[OA\Post(
         path: "/api/npwpd/refresh",
@@ -139,5 +140,32 @@ public function destroy(Request $request)
                     : null,
             ],
         ]);
+    }
+
+    #[OA\Post(
+        path: "/api/npwpd/check",
+        summary: "Cek detail NPWPD ke Bapenda TANPA menyimpan (untuk ditampilkan sebelum user konfirmasi)",
+        tags: ["NPWPD (Pajak Usaha)"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(content: new OA\JsonContent(
+            required: ["npwpd_number"],
+            properties: [new OA\Property(property: "npwpd_number", type: "string", example: "01.234.567.8-331")]
+        )),
+        responses: [
+            new OA\Response(response: 200, description: "Detail NPWPD ditemukan"),
+            new OA\Response(response: 404, description: "NPWPD tidak ditemukan di Bapenda"),
+        ]
+    )]
+    public function check(Request $request, BapendaServiceInterface $bapenda)
+    {
+        $request->validate(['npwpd_number' => ['required', 'string']]);
+
+        $data = $bapenda->findNpwpd($request->npwpd_number);
+
+        if ($data === null) {
+            return response()->json(['message' => 'NPWPD tidak ditemukan di sistem Bapenda.'], 404);
+        }
+
+        return response()->json(['npwpd_number' => $request->npwpd_number, ...$data]);
     }
 }

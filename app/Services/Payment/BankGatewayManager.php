@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Payment;
 
 use App\Contracts\BankGatewayInterface;
 use App\Enums\BankCode;

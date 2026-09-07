@@ -18,13 +18,7 @@ class Payment extends Model
         'id_user',
         'type',
         'provider',
-        'token',
-        'masked_number',
         'is_default',
-    ];
-
-    protected $hidden = [
-        'token',
     ];
 
     protected function casts(): array
@@ -34,8 +28,6 @@ class Payment extends Model
             'type' => PaymentChannel::class,
         ];
     }
-
-    // ── Relationships ────────────────────────────────
 
     public function user(): BelongsTo
     {
