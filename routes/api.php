@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/change-pin', [AuthController::class, 'changePin']);
 
     Route::get('/summary', [TaxSummaryController::class, 'index']);
 

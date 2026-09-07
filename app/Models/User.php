@@ -38,6 +38,8 @@ class User extends Authenticatable
             'pin_number' => 'hashed',
             'is_nik_verified' => 'boolean',
             'email_verified_at' => 'datetime',
+            'login_locked_until' => 'datetime',
+            'pin_locked_until' => 'datetime',
         ];
     }
 
@@ -50,7 +52,6 @@ class User extends Authenticatable
 
     public function npwpd(): HasOne
     {
-        // 1 user hanya boleh 1 NPWPD
         return $this->hasOne(Npwpd::class, 'id_user', 'id_user');
     }
 
@@ -77,5 +78,17 @@ class User extends Authenticatable
     public function verificationLogs(): HasMany
     {
         return $this->hasMany(VerificationLog::class, 'id_user', 'id_user');
+    }
+
+    public function isLoginLocked(): bool
+    {
+        return $this->login_locked_until !== null
+            && $this->login_locked_until->isFuture();
+    }
+
+    public function isPinLocked(): bool
+    {
+        return $this->pin_locked_until !== null
+            && $this->pin_locked_until->isFuture();
     }
 }

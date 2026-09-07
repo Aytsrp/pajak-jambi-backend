@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\PemdaVerificationException;
+use App\Exceptions\TransactionException;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ChangePasswordRequest;
+use App\Http\Requests\ChangePinRequest;
 use App\Models\User;
 use App\Services\Pemda\NikVerificationService;
 use App\Services\Security\AccountSecurityService;
@@ -46,7 +48,7 @@ class AuthController extends Controller
         ]
     )]
 
-       public function register(RegisterRequest $request)
+    public function register(RegisterRequest $request)
     {
         try {
             $this->nikVerification->verify($request->nik, $request->ip());
@@ -178,6 +180,50 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Password berhasil diubah. Sesi login di perangkat lain telah dikeluarkan.',
+        ]);
+    }
+
+    #[OA\Post(
+        path: "/api/change-pin",
+        summary: "Ubah PIN transaksi (user sudah login, konfirmasi pakai PIN lama)",
+        tags: ["Auth"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["current_pin", "new_pin", "new_pin_confirmation"],
+                properties: [
+                    new OA\Property(property: "current_pin", type: "string", example: "123456"),
+                    new OA\Property(property: "new_pin", type: "string", example: "654321"),
+                    new OA\Property(property: "new_pin_confirmation", type: "string", example: "654321"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "PIN berhasil diubah"),
+            new OA\Response(response: 422, description: "PIN lama salah, atau PIN baru sama dengan lama"),
+            new OA\Response(response: 423, description: "PIN terkunci sementara karena terlalu banyak percobaan gagal — minta OTP reset PIN (purpose: reset_pin)"),
+        ]
+    )]
+    public function changePin(ChangePinRequest $request)
+    {
+        $user = $request->user();
+
+        if ($user->isPinLocked()) {
+            throw TransactionException::pinLocked();
+        }
+
+        if (! Hash::check($request->current_pin, $user->pin_number)) {
+            $this->accountSecurity->registerFailedPin($user);
+            throw TransactionException::invalidPin();
+        }
+
+        $this->accountSecurity->resetPinAttempts($user);
+
+        $user->update(['pin_number' => $request->new_pin]);
+
+        return response()->json([
+            'message' => 'PIN berhasil diubah.',
         ]);
     }
 }
