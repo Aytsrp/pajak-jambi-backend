@@ -14,16 +14,13 @@ use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────────
 
-Route::post('/register', [AuthController::class, 'register'])
-    ->middleware('throttle:5,1');
+Route::post('/register', [AuthController::class, 'register']);
 
-Route::post('/login', [AuthController::class, 'login'])
-    ->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login']);
 
-Route::prefix('otp')->middleware('throttle:5,1')->group(function () {
+Route::prefix('otp')->group(function () {
     Route::post('/request', [OtpController::class, 'request']);
-    Route::post('/verify', [OtpController::class, 'verify'])
-        ->middleware('throttle:10,1');
+    Route::post('/verify', [OtpController::class, 'verify']);
 });
 
 Route::prefix('h2h/{bank_code}')->group(function () {
@@ -45,20 +42,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/summary', [TaxSummaryController::class, 'index']);
 
     Route::get('/nops', [NopController::class, 'index']);
-    Route::post('/nops', [NopController::class, 'store'])
-        ->middleware('throttle:10,1');
+    Route::post('/nops', [NopController::class, 'store']);
     Route::get('/nops/{id}', [NopController::class, 'show']);
     Route::delete('/nops/{id}', [NopController::class, 'destroy']);
-    Route::post('/nops/{id}/refresh', [NopController::class, 'refresh'])
-        ->middleware('throttle:20,1');
+    Route::post('/nops/{id}/refresh', [NopController::class, 'refresh']);
     Route::post('/nops/check', [NopController::class, 'check']);
 
     Route::get('/npwpd', [NpwpdController::class, 'show']);
-    Route::post('/npwpd', [NpwpdController::class, 'store'])
-        ->middleware('throttle:10,1');
+    Route::post('/npwpd', [NpwpdController::class, 'store']);
     Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
-    Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh'])
-        ->middleware('throttle:20,1');
+    Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh']);
     Route::post('/npwpd/check', [NpwpdController::class, 'check']);
 
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
