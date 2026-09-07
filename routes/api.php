@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/nops', [NopController::class, 'store'])
         ->middleware('throttle:10,1');
     Route::get('/nops/{id}', [NopController::class, 'show']);
+    Route::delete('/nops/{id}', [NopController::class, 'destroy']);
     Route::post('/nops/{id}/refresh', [NopController::class, 'refresh'])
         ->middleware('throttle:20,1');
     Route::post('/nops/check', [NopController::class, 'check']);
@@ -55,9 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/npwpd', [NpwpdController::class, 'show']);
     Route::post('/npwpd', [NpwpdController::class, 'store'])
         ->middleware('throttle:10,1');
+    Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
     Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh'])
         ->middleware('throttle:20,1');
-    Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
     Route::post('/npwpd/check', [NpwpdController::class, 'check']);
 
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
