@@ -46,7 +46,7 @@ class AuthController extends Controller
         ]
     )]
 
-    public function register(RegisterRequest $request)
+       public function register(RegisterRequest $request)
     {
         try {
             $this->nikVerification->verify($request->nik, $request->ip());
@@ -58,11 +58,8 @@ class AuthController extends Controller
             'is_nik_verified' => true,
         ]));
 
-        $token = $user->createToken('mobile')->plainTextToken;
-
         return response()->json([
-            'message' => 'Registrasi berhasil.',
-            'token' => $token,
+            'message' => 'Registrasi berhasil. Silakan login.',
             'user' => [
                 'id_user' => $user->id_user,
                 'full_name' => $user->full_name,
