@@ -36,7 +36,7 @@ class PaymentMethodController extends Controller
             content: new OA\JsonContent(
                 required: ["type", "provider"],
                 properties: [
-                    new OA\Property(property: "type", type: "string", enum: ["credit_card", "e_wallet", "bank_transfer", "qris"], example: "e_wallet"),
+                    new OA\Property(property: "type", type: "string", enum: ["bank_transfer", "qris"], example: "qris"),
                     new OA\Property(property: "provider", type: "string", example: "OVO"),
                     new OA\Property(property: "masked_number", type: "string", example: "****1234"),
                     new OA\Property(property: "is_default", type: "boolean", example: true),

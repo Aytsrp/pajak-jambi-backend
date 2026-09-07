@@ -25,19 +25,17 @@ class TransactionController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["id_bill", "id_payment", "idempotency_key"],
+                required: ["id_bill", "payment_channel", "pin", "idempotency_key"],
                 properties: [
                     new OA\Property(property: "id_bill", type: "integer", example: 1),
-                    new OA\Property(property: "id_payment", type: "integer", example: 1),
+                    new OA\Property(property: "payment_channel", type: "string", enum: ["bank_transfer", "qris"], example: "bank_transfer"),
+                    new OA\Property(property: "bank_code", type: "string", enum: ["bank_jambi", "mandiri", "bri", "bni", "btn"], nullable: true, example: "bank_jambi", description: "Wajib diisi jika payment_channel = bank_transfer"),
+                    new OA\Property(property: "id_payment", type: "integer", nullable: true, example: 1, description: "Opsional — ID metode pembayaran tersimpan"),
+                    new OA\Property(property: "pin", type: "string", example: "123456", description: "PIN transaksi 6 digit, divalidasi langsung di step ini"),
                     new OA\Property(property: "idempotency_key", type: "string", example: "a1b2c3d4-uuid-dari-flutter"),
                 ]
             )
-        ),
-        responses: [
-            new OA\Response(response: 201, description: "Transaksi PENDING dibuat, tampilkan rincian ke user"),
-            new OA\Response(response: 404, description: "Tagihan/metode bayar tidak ditemukan"),
-            new OA\Response(response: 422, description: "Tagihan sudah lunas"),
-        ]
+        )
     )]
     public function initiate(InitiateTransactionRequest $request)
     {
@@ -58,26 +56,6 @@ class TransactionController extends Controller
             ->response()
             ->setStatusCode(201);
     }
-
-    #[OA\Post(
-        path: "/api/transactions/{id}/confirm-pin",
-        summary: "Langkah 2: konfirmasi PIN, eksekusi pembayaran",
-        tags: ["Transactions"],
-        security: [["bearerAuth" => []]],
-        parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(required: ["pin"], properties: [
-                new OA\Property(property: "pin", type: "string", example: "123456"),
-            ])
-        ),
-        responses: [
-            new OA\Response(response: 200, description: "Pembayaran berhasil, bill jadi lunas, bukti tersedia"),
-            new OA\Response(response: 402, description: "Gateway menolak pembayaran"),
-            new OA\Response(response: 422, description: "PIN salah / transaksi bukan pending"),
-            new OA\Response(response: 423, description: "PIN terkunci karena terlalu banyak percobaan"),
-        ]
-    )]
 
     #[OA\Get(
         path: "/api/transactions",

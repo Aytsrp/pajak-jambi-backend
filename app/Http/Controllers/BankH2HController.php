@@ -7,7 +7,7 @@ use App\Enums\BillStatus;
 use App\Enums\TransactionStatus;
 use App\Events\TransactionCompleted;
 use App\Models\Transaction;
-use App\Services\BankGatewayManager;
+use App\Services\Payment\BankGatewayManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
