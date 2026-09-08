@@ -19,7 +19,7 @@
 <body>
     <div class="container">
         <!-- Logo Kota Jambi -->
-        <img src="{{ $message->embed(public_path('logo.png')) }}" alt="Logo Kota Jambi" class="logo">
+        <img src="{{ $message->embed(public_path('images/jambi-city-seal.png')) }}" alt="Logo Kota Jambi" class="logo">
         
         <h1>Kode Verifikasi</h1>
         <p>Gunakan kode rahasia di bawah ini untuk melanjutkan proses verifikasi di aplikasi <b>Pajak Jambi</b>. Kode ini berlaku selama 5 menit.</p>
