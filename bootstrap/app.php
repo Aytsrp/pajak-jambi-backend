@@ -20,7 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'has.tax.object' => EnsureHasTaxObject::class,
+            'has.tax.object' => EnsureHasTaxObject::class
+            ,
         ]);
 
         $middleware->api(prepend: [
