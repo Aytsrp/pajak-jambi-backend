@@ -21,7 +21,12 @@ class DummyBankGatewayService implements BankGatewayInterface
 
     public function verifyIncomingRequest(array $headers, array $payload): bool
     {
-        return ($headers['x-api-key'] ?? null) === config('bank_gateway.dummy_shared_secret');
+        $key = $headers['x-api-key'] ?? $headers['X-Api-Key'] ?? null;
+        if (is_array($key)) {
+            $key = $key[0] ?? null;
+        }
+
+        return $key === config('bank_gateway.dummy_shared_secret');
     }
 
     public function formatInquiryResponse(Transaction $transaction): array

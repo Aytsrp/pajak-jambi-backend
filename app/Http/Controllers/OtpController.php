@@ -45,12 +45,19 @@ class OtpController extends Controller
         $purpose = OtpPurpose::from($request->purpose);
         $channel = OtpChannel::from($request->channel);
 
-        $this->accountSecurity->generateOtp($user, $purpose, $channel);
+        $generated = $this->accountSecurity->generateOtp($user, $purpose, $channel);
 
-        return response()->json([
+        $payload = [
             'message' => 'Kode OTP telah dikirim. Kode berlaku selama '
                 . config('security.otp.expiry_minutes') . ' menit.',
-        ]);
+        ];
+
+        // Dummy/local saja: supaya Postman/Collection Runner bisa ambil kode tanpa buka laravel.log
+        if (! app()->isProduction()) {
+            $payload['otp_code'] = $generated['plain_code'];
+        }
+
+        return response()->json($payload);
     }
 
     #[OA\Post(

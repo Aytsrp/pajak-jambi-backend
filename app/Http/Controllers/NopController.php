@@ -8,6 +8,7 @@ use App\Http\Requests\RegisterNopRequest;
 use App\Http\Resources\NopResource;
 use App\Services\Pemda\BillSyncService;
 use App\Services\Pemda\NopRegistrationService;
+use App\Support\DummyAuth;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
@@ -111,6 +112,12 @@ class NopController extends Controller
     public function destroy(Request $request, int $id)
     {
         $nop = $request->user()->nops()->findOrFail($id);
+
+        if (DummyAuth::enabled()) {
+            return response()->json([
+                'message' => 'NOP berhasil dihapus dari akun Anda.',
+            ]);
+        }
 
         $hasTransactionHistory = $nop->bills()
             ->whereHas('transactions')

@@ -5,12 +5,11 @@ namespace App\Services\Security;
 use App\Contracts\OtpSenderInterface;
 use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
+use App\Exceptions\OtpException;
 use App\Models\Otp;
 use App\Models\User;
+use App\Support\DummyAuth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use App\Exceptions\OtpException;
 
 class AccountSecurityService
 {
@@ -64,7 +63,10 @@ class AccountSecurityService
 
     // ── OTP: generate & kirim ───────────────────────────
 
-    public function generateOtp(User $user, OtpPurpose $purpose, OtpChannel $channel): Otp
+    /**
+     * @return array{otp: Otp, plain_code: string}
+     */
+    public function generateOtp(User $user, OtpPurpose $purpose, OtpChannel $channel): array
     {
         // Invalidate OTP lama yang masih aktif untuk purpose yang sama
         $user->otps()
@@ -72,7 +74,9 @@ class AccountSecurityService
             ->whereNull('used_at')
             ->update(['used_at' => now()]);
 
-        $plainCode = str_pad((string) random_int(0, 999999), config('security.otp.length'), '0', STR_PAD_LEFT);
+        $plainCode = DummyAuth::enabled()
+            ? DummyAuth::otpCode()
+            : str_pad((string) random_int(0, 999999), config('security.otp.length'), '0', STR_PAD_LEFT);
 
         $otp = $user->otps()->create([
             'purpose' => $purpose,
@@ -84,7 +88,7 @@ class AccountSecurityService
 
         $this->otpSender->send($user, $channel, $plainCode);
 
-        return $otp;
+        return ['otp' => $otp, 'plain_code' => $plainCode];
     }
 
     // ── OTP: verifikasi ──────────────────────────────────

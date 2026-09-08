@@ -43,17 +43,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/summary', [TaxSummaryController::class, 'index']);
 
     Route::get('/nops', [NopController::class, 'index']);
+    Route::post('/nops/check', [NopController::class, 'check']);
     Route::post('/nops', [NopController::class, 'store']);
     Route::get('/nops/{id}', [NopController::class, 'show']);
     Route::delete('/nops/{id}', [NopController::class, 'destroy']);
     Route::post('/nops/{id}/refresh', [NopController::class, 'refresh']);
-    Route::post('/nops/check', [NopController::class, 'check']);
 
     Route::get('/npwpd', [NpwpdController::class, 'show']);
+    Route::post('/npwpd/check', [NpwpdController::class, 'check']);
     Route::post('/npwpd', [NpwpdController::class, 'store']);
     Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
     Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh']);
-    Route::post('/npwpd/check', [NpwpdController::class, 'check']);
 
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
     Route::post('/payment-methods', [PaymentMethodController::class, 'store']);
@@ -61,10 +61,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
 
     Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::get('/transactions/monthly-summary', [TransactionController::class, 'monthlySummary']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
     Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])
         ->name('transactions.proof');
-    Route::get('/transactions/monthly-summary', [TransactionController::class, 'monthlySummary']);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);

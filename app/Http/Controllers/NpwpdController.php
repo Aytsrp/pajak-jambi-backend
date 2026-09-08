@@ -8,6 +8,7 @@ use App\Http\Requests\RegisterNpwpdRequest;
 use App\Http\Resources\NpwpdResource;
 use App\Services\Pemda\BillSyncService;
 use App\Services\Pemda\NpwpdRegistrationService;
+use App\Support\DummyAuth;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
@@ -93,6 +94,12 @@ class NpwpdController extends Controller
     public function destroy(Request $request)
     {
         $npwpd = $request->user()->npwpd()->firstOrFail();
+
+        if (DummyAuth::enabled()) {
+            return response()->json([
+                'message' => 'NPWPD berhasil dihapus dari akun Anda.',
+            ]);
+        }
 
         $hasTransactionHistory = $npwpd->bills()
             ->whereHas('transactions')

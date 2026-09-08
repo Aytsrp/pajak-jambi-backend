@@ -1,0 +1,2435 @@
+{
+  "info": {
+    "_postman_id": "f3756973-1d7c-4864-91f5-a3bda82af483",
+    "name": "Pajak Jambi Backend - Full API Automation Collection",
+    "description": "Automation testing collection untuk seluruh route backend_pajak_jambi (Laravel 13 + Sanctum).\nDibuat untuk dijalankan via Collection Runner atau Newman (CLI) supaya bisa masuk CI/CD.\n\nURUTAN JALANKAN (folder atas ke bawah, di dalam folder juga urut atas ke bawah):\n1. Auth & OTP -> Register, lalu Login (WAJIB, karena register tidak lagi auto-login), lalu OTP flows, Change Password, Change PIN.\n2. NOP (PBB-P2) dan/atau NPWPD (Pajak Usaha) -> isi minimal salah satu (dicek middleware has.tax.object).\n3. Payment Methods -> tambah metode bayar dulu sebelum transaksi.\n4. Transactions -> initiate, lalu lunasi via folder 6 (Bank H2H) atau 7 (QRIS Webhook).\n5. Bank H2H / QRIS Webhook -> simulasi callback bank/payment gateway sungguhan.\n6. Notifications, Summary -> cek hasil akhir.\n7. Unauthenticated / Negative -> pastikan proteksi middleware & validasi jalan.\n\nCATATAN PENTING dari review kode backend (per commit terakhir yang direview):\n- Data uji Dukcapil (NIK valid, cuma 3): 1671010101010001 / ...02 / ...03. NIK unik di DB -> tiap NIK cuma 1x register sebelum di-reset (migrate:fresh --seed).\n- Data uji Bapenda NOP valid: 3671010203040001, 3671010203040002 (tunggakan+denda), 3671010203040003.\n- Data uji Bapenda NPWPD valid: 01.234.567.8-331 (2 tagihan aktif), 01.234.567.9-331 (tanpa tagihan).\n- FIXED: Register tidak lagi otomatis membuat token -- harus Login terpisah setelahnya.\n- FIXED: User::isLoginLocked() dan User::isPinLocked() sudah ditambahkan (sebelumnya undefined method, bikin /login dan /transactions/initiate selalu 500 untuk user yang sudah terdaftar).\n- BARU: endpoint POST /change-pin untuk ganti PIN saat masih ingat PIN lama (terpisah dari lupa-PIN yang pakai OTP purpose=reset_pin).\n- BELUM DIPERBAIKI: BankH2HController salah import namespace BankGatewayManager -> /h2h/{bank_code}/inquiry dan /payment masih 500 sampai diperbaiki (use App\\\\Services\\\\Payment\\\\BankGatewayManager).\n- Dokumentasi Swagger lama menyebut endpoint POST /transactions/{id}/confirm-pin, tapi route & method-nya tidak ada -- PIN divalidasi langsung di POST /transactions/initiate.\n- Field 'type' di Payment Methods cuma menerima 'bank_transfer'/'qris' (bukan 'credit_card'/'e_wallet' seperti contoh lama di Swagger).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nik",
+      "value": "1671010101010001",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "ahmad.fauzi.test@example.com",
+      "type": "string"
+    },
+    {
+      "key": "phone_number",
+      "value": "081234567890",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "wrong_password",
+      "value": "passwordSalah999",
+      "type": "string"
+    },
+    {
+      "key": "new_password",
+      "value": "passwordBaru456",
+      "type": "string"
+    },
+    {
+      "key": "pin",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "wrong_pin",
+      "value": "999999",
+      "type": "string"
+    },
+    {
+      "key": "new_pin",
+      "value": "654321",
+      "type": "string"
+    },
+    {
+      "key": "otp_code",
+      "value": "123456",
+      "type": "string",
+      "description": "Diisi otomatis dari response POST /otp/request (field otp_code, dummy/local)."
+    },
+    {
+      "key": "nop_number",
+      "value": "3671010203040001",
+      "type": "string"
+    },
+    {
+      "key": "nop_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "id_bill_pbb",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "npwpd_number",
+      "value": "01.234.567.8-331",
+      "type": "string"
+    },
+    {
+      "key": "npwpd_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "id_bill_usaha_1",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "id_bill_usaha_2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bank_code",
+      "value": "bank_jambi",
+      "type": "string",
+      "description": "Pilihan: bank_jambi, mandiri, bri, bni, btn"
+    },
+    {
+      "key": "id_payment_bank",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "id_payment_qris",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id_bank",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id_qris",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_ref_qris",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "va_number",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "qr_string",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bank_h2h_secret",
+      "value": "secret-dummy-h2h-jambi",
+      "type": "string"
+    },
+    {
+      "key": "qris_secret",
+      "value": "secret-dummy-qris-jambi",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "original_password",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "original_pin",
+      "value": "123456",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth & OTP",
+      "item": [
+        {
+          "name": "Register (NIK valid - Dukcapil dummy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"full_name\": \"Ahmad Fauzi\",\n  \"email\": \"{{email}}\",\n  \"phone_number\": \"{{phone_number}}\",\n  \"password\": \"{{password}}\",\n  \"password_confirmation\": \"{{password}}\",\n  \"pin_number\": \"{{pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NIK harus salah satu dari dataset dummy Dukcapil: 1671010101010001 / 1671010101010002 / 1671010101010003. NIK, email, phone_number unik di DB. Register TIDAK LAGI mengembalikan token (fix: auto-login dihapus) -- jalankan request 'Login' setelah ini untuk dapat token.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 atau akun sudah terdaftar (422)\", () => {",
+                  "    pm.expect([201, 422]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.test(\"Response TIDAK mengandung token (register terpisah dari login)\", () => {",
+                  "        pm.expect(jsonData).to.not.have.property(\"token\");",
+                  "    });",
+                  "    pm.test(\"Response punya data user\", () => {",
+                  "        pm.expect(jsonData).to.have.property(\"user\");",
+                  "        pm.expect(jsonData.user).to.have.property(\"id_user\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Duplikat (negative test - harus 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"full_name\": \"Ahmad Fauzi Duplikat\",\n  \"email\": \"{{email}}\",\n  \"phone_number\": \"{{phone_number}}\",\n  \"password\": \"{{password}}\",\n  \"password_confirmation\": \"{{password}}\",\n  \"pin_number\": \"{{pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NIK/email/phone yang sama dipakai lagi -- harus ditolak karena unique constraint. Pastikan request 'Register' di atas sudah pernah sukses dijalankan sebelum ini.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 (NIK/email sudah dipakai)\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (NIK + Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Satu-satunya cara dapat bearer token sekarang (setelah register tidak lagi auto-login). WAJIB dijalankan sebelum request-request di folder lain.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"password\", pm.collectionVariables.get(\"original_password\") || \"password123\");",
+                  "pm.collectionVariables.set(\"pin\", pm.collectionVariables.get(\"original_pin\") || \"123456\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Response punya token\", () => pm.expect(jsonData).to.have.property(\"token\"));",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Password Salah (negative test - harus 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"password\": \"{{wrong_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Memastikan validasi password jalan, dan (di background) menambah login_attempts. Jangan dijalankan >4x berturut-turut kalau tidak mau akun ini ikut ter-lock (max_attempts=5, lock_minutes=15 di config/security.php).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request OTP - Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"reset_password\",\n  \"channel\": \"email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Dummy OTP -- kode 6 digit dicatat ke storage/logs/laravel.log server, bukan benar-benar terkirim. Ambil dari sana untuk diisi ke {{otp_code}}.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.otp_code) {",
+                  "    pm.collectionVariables.set(\"otp_code\", jsonData.otp_code);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP - Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"reset_password\",\n  \"code\": \"{{otp_code}}\",\n  \"new_password\": \"{{new_password}}\",\n  \"new_password_confirmation\": \"{{new_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Isi {{otp_code}} dari log server dulu. Setelah sukses, update variable {{password}} = {{new_password}} lalu login ulang.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"password\", pm.collectionVariables.get(\"new_password\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request OTP - Reset PIN (lupa PIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"reset_pin\",\n  \"channel\": \"sms\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.otp_code) {",
+                  "    pm.collectionVariables.set(\"otp_code\", jsonData.otp_code);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP - Reset PIN (lupa PIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"reset_pin\",\n  \"code\": \"{{otp_code}}\",\n  \"new_pin\": \"{{new_pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Untuk skenario BENAR-BENAR LUPA PIN (tanpa tahu PIN lama). Kalau masih ingat PIN lama, pakai 'Change PIN' di bawah, bukan ini. Update {{pin}} = {{new_pin}} setelah sukses.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"pin\", pm.collectionVariables.get(\"new_pin\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request OTP - Unlock Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"unlock_account\",\n  \"channel\": \"email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Jalankan kalau akun terkunci (login_locked_until masih di masa depan) setelah 5x gagal login.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.otp_code) {",
+                  "    pm.collectionVariables.set(\"otp_code\", jsonData.otp_code);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP - Unlock Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/otp/verify",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "otp",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"{{nik}}\",\n  \"purpose\": \"unlock_account\",\n  \"code\": \"{{otp_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change Password (sudah login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"{{password}}\",\n  \"new_password\": \"{{original_password}}\",\n  \"new_password_confirmation\": \"{{original_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Butuh bearer token aktif. Sukses -> semua token device lain otomatis logout. Update {{password}} = {{new_password}} setelahnya."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"password\", pm.collectionVariables.get(\"original_password\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change PIN (sudah login, masih ingat PIN lama)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/change-pin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "change-pin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_pin\": \"{{pin}}\",\n  \"new_pin\": \"{{original_pin}}\",\n  \"new_pin_confirmation\": \"{{original_pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Endpoint baru: ganti PIN saat masih ingat PIN lama (beda dari 'lupa PIN' yang pakai OTP). Butuh bearer token. Update {{pin}} = {{new_pin}} setelah sukses."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"pin\", pm.collectionVariables.get(\"original_pin\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change PIN - PIN Lama Salah (negative test - harus 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/change-pin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "change-pin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_pin\": \"{{wrong_pin}}\",\n  \"new_pin\": \"{{new_pin}}\",\n  \"new_pin_confirmation\": \"{{new_pin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Memastikan validasi current_pin jalan. Jangan dijalankan >2x berturut-turut kalau tidak mau PIN ikut ter-lock (max_attempts=3 di config/security.php)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. NOP (PBB-P2)",
+      "item": [
+        {
+          "name": "Check NOP (preview Bapenda, belum simpan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops/check",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nop_number\": \"{{nop_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NOP valid dummy: 3671010203040001 / 3671010203040002 (ada tunggakan+denda) / 3671010203040003."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check NOP Tidak Valid (negative test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops/check",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nop_number\": \"9999999999999999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NOP di luar dataset dummy Bapenda -- harus ditolak."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404 atau 422\", () => pm.expect([404,422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register NOP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nop_number\": \"{{nop_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) {",
+                  "    pm.collectionVariables.set(\"nop_id\", jsonData.data.id_nop);",
+                  "    if (jsonData.data.bills && jsonData.data.bills.length > 0) {",
+                  "        pm.collectionVariables.set(\"id_bill_pbb\", jsonData.data.bills[0].id_bills);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List NOP milik user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response data berupa array\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detail NOP",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops/{{nop_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops",
+                "{{nop_id}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Tagihan NOP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops/{{nop_id}}/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops",
+                "{{nop_id}}",
+                "refresh"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. NPWPD (Pajak Usaha)",
+      "item": [
+        {
+          "name": "Check NPWPD (preview Bapenda, belum simpan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/npwpd/check",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "npwpd",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"npwpd_number\": \"{{npwpd_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "NPWPD valid dummy: 01.234.567.8-331 (2 tagihan aktif: makanan&minuman + listrik) / 01.234.567.9-331 (tanpa tagihan)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register NPWPD",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/npwpd",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "npwpd"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"npwpd_number\": \"{{npwpd_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Satu user maksimal 1 NPWPD."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 atau NPWPD sudah terdaftar (422)\", () => {",
+                  "    pm.expect([201, 422]).to.include(pm.response.code);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) {",
+                  "    pm.collectionVariables.set(\"npwpd_id\", jsonData.data.id_npwpd);",
+                  "    if (jsonData.data.bills && jsonData.data.bills[0]) {",
+                  "        pm.collectionVariables.set(\"id_bill_usaha_1\", jsonData.data.bills[0].id_bills);",
+                  "        if (jsonData.data.bills[1]) {",
+                  "            pm.collectionVariables.set(\"id_bill_usaha_2\", jsonData.data.bills[1].id_bills);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get NPWPD milik user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/npwpd",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "npwpd"
+              ]
+            },
+            "description": "200 dengan data: null kalau user belum daftar NPWPD sama sekali."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "const npwpd = jsonData.data || jsonData;",
+                  "if (npwpd && npwpd.id_npwpd) {",
+                  "    pm.collectionVariables.set(\"npwpd_id\", npwpd.id_npwpd);",
+                  "    if (npwpd.bills && npwpd.bills[0]) {",
+                  "        pm.collectionVariables.set(\"id_bill_usaha_1\", npwpd.bills[0].id_bills);",
+                  "        if (npwpd.bills[1]) {",
+                  "            pm.collectionVariables.set(\"id_bill_usaha_2\", npwpd.bills[1].id_bills);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Tagihan NPWPD",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/npwpd/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "npwpd",
+                "refresh"
+              ]
+            },
+            "description": "Cek ulang ke Bapenda apakah ada tagihan baru (mis. setelah lapor pajak). Response berisi meta.has_new_bill."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Payment Methods",
+      "item": [
+        {
+          "name": "Tambah Metode Bayar - Bank Transfer (VA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"bank_transfer\",\n  \"provider\": \"{{bank_code}}\",\n  \"is_default\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Field 'type' HANYA menerima 'bank_transfer' atau 'qris' (App\\\\Enums\\\\PaymentChannel) -- BUKAN 'credit_card'/'e_wallet'. 'provider' untuk bank_transfer: bank_jambi, mandiri, bri, bni, btn."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) pm.collectionVariables.set(\"id_payment_bank\", jsonData.data.id_payment);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tambah Metode Bayar - QRIS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"qris\",\n  \"provider\": \"qris\",\n  \"is_default\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) pm.collectionVariables.set(\"id_payment_qris\", jsonData.data.id_payment);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tambah Metode Bayar - Type Tidak Valid (negative test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"credit_card\",\n  \"provider\": \"visa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Menguji bahwa 'credit_card' (dicontohkan di dokumentasi Swagger lama) memang ditolak validasi -- membuktikan doc lama menyesatkan."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 (type tidak didukung)\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Metode Bayar Tersimpan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Default Metode Bayar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods/{{id_payment_qris}}/set-default",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods",
+                "{{id_payment_qris}}",
+                "set-default"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus Metode Bayar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment-methods/{{id_payment_qris}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payment-methods",
+                "{{id_payment_qris}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Transactions",
+      "item": [
+        {
+          "name": "Initiate Transaksi - Bayar PBB via Bank Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/initiate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_bill\": \"{{id_bill_pbb}}\",\n  \"payment_channel\": \"bank_transfer\",\n  \"bank_code\": \"{{bank_code}}\",\n  \"id_payment\": \"{{id_payment_bank}}\",\n  \"pin\": \"{{pin}}\",\n  \"idempotency_key\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "PIN divalidasi LANGSUNG di sini (bukan lewat 'confirm-pin' terpisah -- endpoint itu cuma dokumentasi mati, tidak ada route/method-nya). Kalau berhasil, status 'pending' + dapat nomor VA -- pelunasan lewat callback H2H (folder 6). idempotency_key otomatis dari Postman ({{$guid}})."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) {",
+                  "    pm.collectionVariables.set(\"transaction_id_bank\", jsonData.data.id_transactions);",
+                  "    pm.collectionVariables.set(\"va_number\", jsonData.data.va_number);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Initiate Transaksi - PIN Salah (negative test - harus 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/initiate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_bill\": \"{{id_bill_pbb}}\",\n  \"payment_channel\": \"bank_transfer\",\n  \"bank_code\": \"{{bank_code}}\",\n  \"id_payment\": \"{{id_payment_bank}}\",\n  \"pin\": \"{{wrong_pin}}\",\n  \"idempotency_key\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Memastikan validasi PIN jalan di level transaksi (pin_attempts bertambah). Jangan >2x berturut-turut supaya PIN tidak ikut ter-lock sebelum tes lain selesai."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422 (PIN salah)\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Initiate Transaksi - Bayar Pajak Usaha via QRIS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/initiate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_bill\": \"{{id_bill_usaha_1}}\",\n  \"payment_channel\": \"qris\",\n  \"id_payment\": \"{{id_payment_bank}}\",\n  \"pin\": \"{{pin}}\",\n  \"idempotency_key\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "bank_code dikosongkan (payment_channel=qris). id_payment nullable -- boleh kosong kalau user langsung scan QR."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data) {",
+                  "    pm.collectionVariables.set(\"transaction_id_qris\", jsonData.data.id_transactions);",
+                  "    pm.collectionVariables.set(\"transaction_ref_qris\", jsonData.data.transaction_ref);",
+                  "    pm.collectionVariables.set(\"qr_string\", jsonData.data.qr_string);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Riwayat Transaksi (dengan filter)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions?tax_type=pbb&from=2026-01-01&to=2026-12-31",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "tax_type",
+                  "value": "pbb"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detail Transaksi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/{{transaction_id_bank}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "{{transaction_id_bank}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nota Pembayaran (PDF)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/{{transaction_id_bank}}/proof?download=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "{{transaction_id_bank}}",
+                "proof"
+              ],
+              "query": [
+                {
+                  "key": "download",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "200 hanya kalau status transaksi sudah 'success' (setelah pelunasan lewat H2H/QRIS webhook di folder lain). Kalau masih 'pending' -> 404."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 atau 404 jika belum lunas\", () => pm.expect([200,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ringkasan Nominal per Bulan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/monthly-summary?year=2026",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "monthly-summary"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Bank H2H (Simulasi Callback Bank)",
+      "item": [
+        {
+          "name": "[Simulasi Bank] Inquiry VA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{bank_h2h_secret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/h2h/{{bank_code}}/inquiry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "h2h",
+                "{{bank_code}}",
+                "inquiry"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"va_number\": \"{{va_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "PERINGATAN: masih akan 500/Class-not-found sampai bug import namespace BankGatewayManager di BankH2HController.php diperbaiki (use App\\\\Services\\\\Payment\\\\BankGatewayManager, bukan App\\\\Services\\\\BankGatewayManager). Header x-api-key harus cocok config('bank_gateway.dummy_shared_secret').",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Bukan 500 (bug import sudah diperbaiki)\", () => pm.expect(pm.response.code).to.not.equal(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Simulasi Bank] Payment VA (pelunasan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{bank_h2h_secret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/h2h/{{bank_code}}/payment",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "h2h",
+                "{{bank_code}}",
+                "payment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"va_number\": \"{{va_number}}\",\n  \"reference_number\": \"REF-TEST-{{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Simulasi callback bank setelah user transfer ke VA -> status transaksi 'success', bill 'paid', notifikasi terpicu. Sama-sama kena bug import di atas.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Bukan 500 (bug import sudah diperbaiki)\", () => pm.expect(pm.response.code).to.not.equal(500));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Endpoint publik yang dipanggil BANK, bukan user/app."
+    },
+    {
+      "name": "7. QRIS Webhook (Simulasi Callback Gateway)",
+      "item": [
+        {
+          "name": "[Simulasi Gateway] QRIS Payment Notification - Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/webhooks/qris",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhooks",
+                "qris"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{transaction_ref_qris}}\",\n  \"status\": \"success\",\n  \"gateway_ref\": \"QRIS-TEST-{{$timestamp}}\",\n  \"secret\": \"{{qris_secret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "order_id diisi otomatis dari transaction_ref hasil 'Initiate Transaksi QRIS' di folder 5. secret harus cocok config('qris_gateway.dummy_shared_secret').",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Simulasi Gateway] QRIS Payment Notification - Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/webhooks/qris",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "webhooks",
+                "qris"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": \"{{transaction_ref_qris}}\",\n  \"status\": \"failed\",\n  \"secret\": \"{{qris_secret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Endpoint publik yang dipanggil payment gateway QRIS, bukan user/app."
+    },
+    {
+      "name": "8. Notifications",
+      "item": [
+        {
+          "name": "List Notifikasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications?unread_only=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "unread_only",
+                  "value": "false"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data[0]) {",
+                  "    pm.collectionVariables.set(\"notification_id\", jsonData.data[0].id_notifications);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Jumlah Notifikasi Belum Dibaca",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/unread-count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "unread-count"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tandai 1 Notifikasi Dibaca",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}/read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notification_id}}",
+                "read"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 atau 404 jika belum ada notifikasi\", () => {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tandai Semua Notifikasi Dibaca",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/read-all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Summary",
+      "item": [
+        {
+          "name": "Ringkasan Total Tagihan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "summary"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Status Onboarding (sudah punya NOP/NPWPD?)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/onboarding-status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me",
+                "onboarding-status"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Negative / Unauthenticated Tests",
+      "item": [
+        {
+          "name": "Akses /summary Tanpa Token (harus 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "summary"
+              ]
+            },
+            "description": "Memastikan middleware auth:sanctum benar-benar melindungi route di dalam grup authenticated.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete NOP",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/nops/{{nop_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nops",
+                "{{nop_id}}"
+              ]
+            },
+            "description": "Jalankan di akhir testing. Kalau NOP sudah punya riwayat transaksi -> soft delete, bukan hapus permanen."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete NPWPD",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/npwpd",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "npwpd"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Initiate Transaksi Tanpa NOP/NPWPD Terdaftar (has.tax.object, harus 403/422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/initiate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "transactions",
+                "initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_bill\": 999999,\n  \"payment_channel\": \"qris\",\n  \"pin\": \"{{pin}}\",\n  \"idempotency_key\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Menguji middleware 'has.tax.object' (EnsureHasTaxObject) -- user tanpa NOP maupun NPWPD terdaftar seharusnya ditolak sebelum sempat masuk ke controller."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status ditolak (401/403/404/422)\", () => pm.expect([401,403,404,422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "Hapus token aktif yang dipakai request ini. Jalankan paling akhir kalau mau memastikan token benar-benar mati (request setelahnya ke endpoint auth akan 401)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Memastikan middleware proteksi (auth:sanctum, has.tax.object) dan validasi benar-benar menolak akses yang tidak sah."
+    }
+  ]
+}

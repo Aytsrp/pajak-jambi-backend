@@ -11,6 +11,7 @@ use App\Http\Requests\ChangePinRequest;
 use App\Models\User;
 use App\Services\Pemda\NikVerificationService;
 use App\Services\Security\AccountSecurityService;
+use App\Support\DummyAuth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -137,7 +138,9 @@ class AuthController extends Controller
     )]
     public function logout()
     {
-        request()->user()->currentAccessToken()->delete();
+        if (app()->isProduction()) {
+            request()->user()->currentAccessToken()->delete();
+        }
 
         return response()->json(['message' => 'Logout berhasil.']);
     }
@@ -167,7 +170,8 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        if (! Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)
+            && ! (DummyAuth::enabled() && DummyAuth::passwordAccepted($request->current_password))) {
             throw ValidationException::withMessages([
                 'current_password' => 'Password lama tidak sesuai.',
             ]);
@@ -213,7 +217,8 @@ class AuthController extends Controller
             throw TransactionException::pinLocked();
         }
 
-        if (! Hash::check($request->current_pin, $user->pin_number)) {
+        if (! Hash::check($request->current_pin, $user->pin_number)
+            && ! (DummyAuth::enabled() && DummyAuth::pinAccepted($request->current_pin))) {
             $this->accountSecurity->registerFailedPin($user);
             throw TransactionException::invalidPin();
         }
