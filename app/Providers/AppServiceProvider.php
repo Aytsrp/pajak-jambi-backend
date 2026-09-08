@@ -9,7 +9,7 @@ use App\Events\TransactionCompleted;
 use App\Listeners\CreateTransactionNotification;
 use App\Models\Nop;
 use App\Models\Npwpd;
-use App\Services\Dummy\DummyOtpSender;
+use App\Services\Security\RealOtpSender;
 use App\Services\Dummy\DummyBankGatewayService;
 use App\Services\Dummy\DummyQrisGatewayService;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(OtpSenderInterface::class, DummyOtpSender::class);
+        $this->app->bind(OtpSenderInterface::class, RealOtpSender::class);
         $this->app->bind(BankGatewayInterface::class, DummyBankGatewayService::class);
         $this->app->bind(QrisGatewayInterface::class, function(){
             return match (config('qris_gateway.driver')){
@@ -39,3 +39,4 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(TransactionCompleted::class, CreateTransactionNotification::class);
     }
 }
+

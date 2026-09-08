@@ -6,7 +6,7 @@ class DummyAuth
 {
     public static function enabled(): bool
     {
-        return ! app()->isProduction();
+        return false;
     }
 
     public static function otpCode(): string
@@ -24,3 +24,4 @@ class DummyAuth
         return in_array($plain, config('security.dummy.pins', []), true);
     }
 }
+
