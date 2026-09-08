@@ -12,7 +12,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\QrisWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// ── Public ──────────────────────────────────────────
+// â”€â”€ Public â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 Route::post('/register', [AuthController::class, 'register']);
 
@@ -30,12 +30,13 @@ Route::prefix('h2h/{bank_code}')->group(function () {
 
 Route::post('/webhooks/qris', [QrisWebhookController::class, 'handle']);
 
-// ── Authenticated (Sanctum) ─────────────────────────
+// â”€â”€ Authenticated (Sanctum) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/me/onboarding-status', [TaxSummaryController::class, 'onboardingstatus']);
 
+    Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/change-pin', [AuthController::class, 'changePin']);

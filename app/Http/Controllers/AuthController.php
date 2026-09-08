@@ -8,6 +8,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\ChangePinRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
 use App\Services\Pemda\NikVerificationService;
 use App\Services\Security\AccountSecurityService;
@@ -206,7 +207,7 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 200, description: "PIN berhasil diubah"),
             new OA\Response(response: 422, description: "PIN lama salah, atau PIN baru sama dengan lama"),
-            new OA\Response(response: 423, description: "PIN terkunci sementara karena terlalu banyak percobaan gagal — minta OTP reset PIN (purpose: reset_pin)"),
+            new OA\Response(response: 423, description: "PIN terkunci sementara karena terlalu banyak percobaan gagal â€” minta OTP reset PIN (purpose: reset_pin)"),
         ]
     )]
     public function changePin(ChangePinRequest $request)
@@ -229,6 +230,48 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'PIN berhasil diubah.',
+        ]);
+    }
+
+    #[OA\Post(
+        path: "/api/profile",
+        summary: "Perbarui profil pengguna (nama, email, nomor HP)",
+        tags: ["Auth"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["full_name", "email", "phone_number"],
+                properties: [
+                    new OA\Property(property: "full_name", type: "string", example: "Budi Santoso"),
+                    new OA\Property(property: "email", type: "string", format: "email", example: "budi@example.com"),
+                    new OA\Property(property: "phone_number", type: "string", example: "081234567890"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Profil berhasil diperbarui"),
+            new OA\Response(response: 422, description: "Validasi gagal (misal: email sudah terpakai)"),
+            new OA\Response(response: 401, description: "Unauthenticated"),
+        ]
+    )]
+    public function updateProfile(UpdateProfileRequest $request)
+    {
+        $user = $request->user();
+        
+        $user->update([
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+        ]);
+
+        return response()->json([
+            'message' => 'Profil berhasil diperbarui.',
+            'user' => [
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+            ]
         ]);
     }
 }
