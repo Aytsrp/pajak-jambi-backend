@@ -122,6 +122,8 @@ class AuthController extends Controller
             'user' => [
                 'id_user' => $user->id_user,
                 'full_name' => $user->full_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
                 'has_nop' => $user->nops()->exists(),
                 'has_npwpd' => $user->npwpd()->exists(),
             ],
