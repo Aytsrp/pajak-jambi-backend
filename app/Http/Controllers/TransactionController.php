@@ -10,6 +10,7 @@ use App\Services\Payment\TransactionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
+use Carbon\Carbon;
 
 class TransactionController extends Controller
 {
@@ -142,6 +143,27 @@ class TransactionController extends Controller
             : $pdf->stream($filename);
     }
 
+    #[OA\Post(
+        path: "/api/transactions/{id}/simulate-payment",
+        summary: "[DEV ONLY] Simulasikan callback bank/QRIS sukses — otomatis 404 di production",
+        tags: ["Transactions"],
+        security: [["bearerAuth" => []]],
+        parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
+        responses: [
+            new OA\Response(response: 200, description: "Transaksi berhasil disimulasikan sukses"),
+            new OA\Response(response: 404, description: "Tidak ditemukan, atau dinonaktifkan di production"),
+        ]
+    )]
+    public function simulatePayment(Request $request, int $id)
+    {
+        abort_if(app()->isProduction(), 404);
+
+        $transaction = $request->user()->transactions()->findOrFail($id);
+        $transaction = $this->service->simulateSuccess($transaction);
+
+        return TransactionResource::make($transaction->load(['bill', 'payment']));
+    }
+
     #[OA\Get(
         path: "/api/transactions/monthly-summary",
         summary: "Total nominal transaksi SUKSES per bulan (untuk halaman Riwayat)",
@@ -167,7 +189,7 @@ class TransactionController extends Controller
         for ($m = 1; $m <= 12; $m++) {
             $result[] = [
                 'month' => $m,
-                'month_label' => \Carbon\Carbon::create($year, $m, 1)->translatedFormat('F'),
+                'month_label' => Carbon::create($year, $m, 1)->translatedFormat('F'),
                 'total_amount' => (float) ($rows[$m]->total ?? 0),
                 'transaction_count' => (int) ($rows[$m]->count ?? 0),
             ];

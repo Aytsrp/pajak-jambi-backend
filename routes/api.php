@@ -12,7 +12,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\QrisWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// â”€â”€ Public â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────── Public ────────────────────────────────────────────────────────────────
 
 Route::post('/register', [AuthController::class, 'register']);
 
@@ -30,7 +30,7 @@ Route::prefix('h2h/{bank_code}')->group(function () {
 
 Route::post('/webhooks/qris', [QrisWebhookController::class, 'handle']);
 
-// â”€â”€ Authenticated (Sanctum) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────── Authenticated (Sanctum) ─────────────────────────────────────────────────
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/monthly-summary', [TransactionController::class, 'monthlySummary']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
+    Route::post('/transactions/{id}/simulate-payment', [TransactionController::class, 'simulatePayment']);
     Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])
         ->name('transactions.proof');
 

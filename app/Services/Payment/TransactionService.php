@@ -8,6 +8,7 @@ use App\Enums\BillStatus;
 use App\Enums\PaymentChannel;
 use App\Enums\TaxType;
 use App\Enums\TransactionStatus;
+use App\Events\TransactionCompleted;
 use App\Exceptions\TransactionException;
 use App\Models\Bill;
 use App\Models\Transaction;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Services\Payment\BankGatewayManager;
 use App\Services\Security\AccountSecurityService;
 use App\Support\DummyAuth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -120,5 +122,28 @@ class TransactionService
             'qr_image_url' => $qrData['qr_image_url'],
             'qr_expired_at' => $qrData['expired_at'],
         ]);
+    }
+
+    public function simulateSuccess(Transaction $transaction): Transaction
+    {
+        if ($transaction->status !== TransactionStatus::Pending) {
+            return $transaction;
+        }
+
+        DB::transaction(function () use ($transaction) {
+            $transaction->update([
+                'status' => TransactionStatus::Success,
+                'gateway_ref' => 'SIMULATED-' . strtoupper(Str::random(10)),
+                'paid_at' => now(),
+                'proof_url' => route('transactions.proof', $transaction->id_transactions),
+            ]);
+
+            $transaction->bill->update(['status' => BillStatus::Paid]);
+        });
+
+        $transaction = $transaction->fresh();
+        TransactionCompleted::dispatch($transaction);
+
+        return $transaction;
     }
 }
