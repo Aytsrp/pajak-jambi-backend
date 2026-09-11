@@ -27,7 +27,12 @@ class RealOtpSender implements OtpSenderInterface
                 }
             }
         } elseif ($channel === OtpChannel::Sms) {
-            $phone = $user->phone;
+            $phone = $user->phone_number;
+            if (! $phone) {
+                Log::error('Failed to send OTP via SMS: user has no phone_number');
+                return false;
+            }
+
             Log::info("Sent OTP via {$channel->value} to {$phone}: {$plainCode}");
             return true;
         }

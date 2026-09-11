@@ -37,6 +37,7 @@ class OtpController extends Controller
             new OA\Response(response: 200, description: "Kode OTP dikirim (di dummy: dicatat ke storage/logs/laravel.log)"),
             new OA\Response(response: 422, description: "NIK tidak ditemukan"),
             new OA\Response(response: 429, description: "Terlalu sering meminta OTP"),
+            new OA\Response(response: 503, description: "OTP gagal dikirim (email/SMS tidak sampai)"),
         ]
     )]
     public function request(RequestOtpRequest $request)

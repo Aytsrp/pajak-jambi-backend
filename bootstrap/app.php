@@ -9,6 +9,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -58,5 +59,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (TransactionException $e, $request) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
+        });
+
+        $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            $retryAfter = (int) ($e->getHeaders()['Retry-After'] ?? 60);
+
+            return response()->json([
+                'message' => "Terlalu banyak percobaan. Silakan coba lagi dalam {$retryAfter} detik.",
+                'retry_after' => $retryAfter,
+            ], 429)->withHeaders($e->getHeaders());
         });
     })->create();

@@ -26,6 +26,21 @@ class DummyBapendaService implements BapendaServiceInterface
             'owner_name' => 'Siti Rahma',
             'object_address' => 'Jl. Gatot Subroto No. 45, Kel. Legok, Kec. Telanaipura, Kota Jambi',
         ],
+        '3671010203040004' => [
+            'object_name' => 'Rumah Tinggal - Jl. Gedang Goreng',
+            'owner_name' => 'Ranu Karnu',
+            'object_address' => 'Jl. Gedang Goreng, Kel. Pasir Putih, Kec. Jambi Selatan, Kota Jambi',
+        ],
+        '3671010203040005' => [
+            'object_name' => 'Ruko 25 Lantai - Jl. Kolonel Abunjani',
+            'owner_name' => 'Rayhan',
+            'object_address' => 'Jl. Kolonel Abunjani No. 21, Kel. Selamat, Kec. Telanaipura, Kota Jambi',
+        ],
+        '3671010203040006' => [
+            'object_name' => 'Rumah Tinggal - Jl. Sultan Thaha No. 55',
+            'owner_name' => 'Maya Putri',
+            'object_address' => 'Jl. Sultan Thaha No. 55, Kel. Simpang IV Sipin, Kec. Telanaipura, Kota Jambi',
+        ],
     ];
 
     /**
@@ -41,6 +56,16 @@ class DummyBapendaService implements BapendaServiceInterface
             'business_name' => 'Hotel Mega Jambi',
             'business_type' => 'PBJT Perhotelan',
             'owner_name' => 'PT Mega Jambi Sejahtera',
+        ],
+        '01.234.568.1-331' => [
+            'business_name' => 'Parkir Simpang Kawat',
+            'business_type' => 'PBJT Parkir',
+            'owner_name' => 'Rudi Hartono',
+        ],
+        '01.234.568.2-331' => [
+            'business_name' => 'Karaoke Melati',
+            'business_type' => 'PBJT Kesenian & Hiburan',
+            'owner_name' => 'Maya Putri',
         ],
     ];
 
@@ -60,28 +85,57 @@ class DummyBapendaService implements BapendaServiceInterface
             return [];
         }
 
-        // Simulasi: 1 tagihan tahun berjalan, kadang ada tunggakan tahun lalu.
         $currentYear = (int) date('Y');
 
-        $bills = [
-            $this->makeDummyBill(
-                taxPeriod: (string) $currentYear,
-                amountDue: 850_000,
-                dueDate: Carbon::create($currentYear, 9, 30),
-            ),
-        ];
-
-        // NOP kedua disimulasikan sudah lewat tenggat tahun lalu (ada denda)
-        if ($nopNumber === '3671010203040002') {
-            $bills[] = $this->makeDummyBill(
-                taxPeriod: (string) ($currentYear - 1),
-                amountDue: 1_200_000,
-                dueDate: Carbon::create($currentYear - 1, 9, 30),
-                simulateOverdue: true,
-            );
-        }
-
-        return $bills;
+        return match ($nopNumber) {
+            '3671010203040002' => [
+                $this->makeDummyBill(
+                    taxPeriod: (string) $currentYear,
+                    amountDue: 850_000,
+                    dueDate: Carbon::create($currentYear, 9, 30),
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: (string) ($currentYear - 1),
+                    amountDue: 1_200_000,
+                    dueDate: Carbon::create($currentYear - 1, 9, 30),
+                    simulateOverdue: true,
+                ),
+            ],
+            '3671010203040004' => [
+                $this->makeDummyBill(
+                    taxPeriod: (string) $currentYear,
+                    amountDue: 1_050_000,
+                    dueDate: Carbon::create($currentYear, 10, 31),
+                ),
+            ],
+            '3671010203040005' => [
+                $this->makeDummyBill(
+                    taxPeriod: (string) $currentYear,
+                    amountDue: 720_000,
+                    dueDate: Carbon::create($currentYear, 9, 30),
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: (string) ($currentYear - 1),
+                    amountDue: 900_000,
+                    dueDate: Carbon::create($currentYear - 1, 9, 30),
+                    simulateOverdue: true,
+                ),
+            ],
+            '3671010203040006' => [
+                $this->makeDummyBill(
+                    taxPeriod: (string) $currentYear,
+                    amountDue: 430_000,
+                    dueDate: Carbon::create($currentYear, 11, 30),
+                ),
+            ],
+            default => [
+                $this->makeDummyBill(
+                    taxPeriod: (string) $currentYear,
+                    amountDue: 850_000,
+                    dueDate: Carbon::create($currentYear, 9, 30),
+                ),
+            ],
+        };
     }
 
     public function getBillsForNpwpd(string $npwpdNumber): array
@@ -90,28 +144,77 @@ class DummyBapendaService implements BapendaServiceInterface
             return [];
         }
 
-        if ($npwpdNumber === '01.234.567.8-331') {
-            return [
+        $period = date('Y-m');
+        $lastMonth = Carbon::now()->subMonth()->format('Y-m');
+
+        return match ($npwpdNumber) {
+            '01.234.567.8-331' => [
                 $this->makeDummyBill(
-                    taxPeriod: date('Y-m'),
+                    taxPeriod: $period,
                     amountDue: 450_000,
                     dueDate: Carbon::now()->addDays(10),
                     taxComponent: 'pbjt_makanan_minuman',
                 ),
                 $this->makeDummyBill(
-                    taxPeriod: date('Y-m'),
+                    taxPeriod: $period,
                     amountDue: 275_000,
                     dueDate: Carbon::now()->addDays(10),
                     taxComponent: 'pbjt_tenaga_listrik',
                 ),
-            ];
-        }
-
-        return [];
+            ],
+            '01.234.567.9-331' => [
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 3_500_000,
+                    dueDate: Carbon::now()->addDays(14),
+                    taxComponent: 'pbjt_perhotelan',
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 250_000,
+                    dueDate: Carbon::now()->addDays(14),
+                    taxComponent: 'pbjt_parkir',
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 680_000,
+                    dueDate: Carbon::now()->addDays(14),
+                    taxComponent: 'pbjt_tenaga_listrik',
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: $lastMonth,
+                    amountDue: 3_200_000,
+                    dueDate: Carbon::now()->subMonth()->endOfMonth(),
+                    taxComponent: 'pbjt_perhotelan',
+                    simulateOverdue: true,
+                ),
+            ],
+            '01.234.568.1-331' => [
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 320_000,
+                    dueDate: Carbon::now()->addDays(7),
+                    taxComponent: 'pbjt_parkir',
+                ),
+            ],
+            '01.234.568.2-331' => [
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 1_150_000,
+                    dueDate: Carbon::now()->addDays(5),
+                    taxComponent: 'pbjt_kesenian_hiburan',
+                ),
+                $this->makeDummyBill(
+                    taxPeriod: $period,
+                    amountDue: 190_000,
+                    dueDate: Carbon::now()->addDays(5),
+                    taxComponent: 'pbjt_tenaga_listrik',
+                ),
+            ],
+            default => [],
+        };
     }
 
-    // ── Helper ────────────────────────────────────────
-    
     private function makeDummyBill(
         string $taxPeriod,
         float $amountDue,
@@ -127,7 +230,7 @@ class DummyBapendaService implements BapendaServiceInterface
 
         return [
             'tax_period' => $taxPeriod,
-            'tax_component' => $taxComponent, // ← tambahan
+            'tax_component' => $taxComponent,
             'amount_due' => $amountDue,
             'penalty_amount' => $penaltyAmount,
             'due_date' => $dueDate->toDateString(),

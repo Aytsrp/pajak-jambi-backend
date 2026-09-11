@@ -10,6 +10,9 @@ class DummyDukcapilService implements DukcapilServiceInterface
         '1671010101010001' => ['full_name' => 'Ahmad Fauzi'],
         '1671010101010002' => ['full_name' => 'Siti Rahma'],
         '1671010101010003' => ['full_name' => 'Budi Santoso'],
+        '1671010101010004' => ['full_name' => 'Dewi Lestari'],
+        '1671010101010005' => ['full_name' => 'Rudi Hartono'],
+        '1671010101010006' => ['full_name' => 'Maya Putri'],
     ];
 
     public function verifyNik(string $nik): ?array

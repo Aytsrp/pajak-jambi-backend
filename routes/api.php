@@ -14,12 +14,15 @@ use Illuminate\Support\Facades\Route;
 
 // ─────── Public ────────────────────────────────────────────────────────────────
 
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register'])
+    ->middleware('throttle:register');
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:login');
 
 Route::prefix('otp')->group(function () {
-    Route::post('/request', [OtpController::class, 'request']);
+    Route::post('/request', [OtpController::class, 'request'])
+        ->middleware('throttle:otp-request');
     Route::post('/verify', [OtpController::class, 'verify']);
 });
 

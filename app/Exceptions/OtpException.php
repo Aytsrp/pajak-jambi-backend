@@ -25,4 +25,9 @@ class OtpException extends Exception
     {
         return new self('Terlalu banyak percobaan salah, silakan minta kode baru.', 429);
     }
+
+    public static function sendFailed(): self
+    {
+        return new self('Kode OTP gagal dikirim. Silakan coba lagi.', 503);
+    }
 }

@@ -47,6 +47,7 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 201, description: "Registrasi berhasil"),
             new OA\Response(response: 422, description: "Validasi gagal / NIK-email sudah dipakai"),
+            new OA\Response(response: 429, description: "Terlalu banyak percobaan, coba lagi nanti"),
         ]
     )]
 
@@ -89,6 +90,7 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 200, description: "Login berhasil, return token"),
             new OA\Response(response: 422, description: "NIK/password salah atau akun terkunci"),
+            new OA\Response(response: 429, description: "Terlalu banyak percobaan, coba lagi nanti"),
         ]
     )]
 

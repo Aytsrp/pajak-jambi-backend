@@ -10,23 +10,38 @@ class NotificationController extends Controller
 {
     #[OA\Get(
         path: "/api/notifications",
-        summary: "List notifikasi milik user, terbaru duluan",
+        summary: "List notifikasi milik user, terbaru duluan (paginasi)",
         tags: ["Notifications"],
         security: [["bearerAuth" => []]],
         parameters: [
             new OA\Parameter(name: "unread_only", in: "query", schema: new OA\Schema(type: "boolean")),
+            new OA\Parameter(name: "page", in: "query", description: "Nomor halaman, mulai dari 1", schema: new OA\Schema(type: "integer", default: 1, minimum: 1)),
+            new OA\Parameter(name: "per_page", in: "query", description: "Jumlah item per halaman (maks. 50)", schema: new OA\Schema(type: "integer", default: 20, minimum: 1, maximum: 50)),
         ],
-        responses: [new OA\Response(response: 200, description: "Daftar notifikasi")]
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Daftar notifikasi. Flutter wajib baca meta.current_page / meta.last_page (atau links.next) untuk infinite scroll.",
+            ),
+        ]
     )]
     public function index(Request $request)
     {
+        $request->validate([
+            'unread_only' => ['sometimes', 'boolean'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
         $query = $request->user()->notifications()->latest('sent_at');
 
         if ($request->boolean('unread_only')) {
             $query->where('is_read', false);
         }
 
-        return NotificationResource::collection($query->paginate(20));
+        $perPage = $request->integer('per_page', 20);
+
+        return NotificationResource::collection($query->paginate($perPage));
     }
 
     #[OA\Get(

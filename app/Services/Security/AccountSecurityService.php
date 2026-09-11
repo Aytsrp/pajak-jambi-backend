@@ -65,6 +65,8 @@ class AccountSecurityService
 
     /**
      * @return array{otp: Otp, plain_code: string}
+     *
+     * @throws OtpException
      */
     public function generateOtp(User $user, OtpPurpose $purpose, OtpChannel $channel): array
     {
@@ -86,7 +88,12 @@ class AccountSecurityService
             'expires_at' => now()->addMinutes(config('security.otp.expiry_minutes')),
         ]);
 
-        $this->otpSender->send($user, $channel, $plainCode);
+        $sent = $this->otpSender->send($user, $channel, $plainCode);
+
+        if (! $sent) {
+            $otp->update(['used_at' => now()]);
+            throw OtpException::sendFailed();
+        }
 
         return ['otp' => $otp, 'plain_code' => $plainCode];
     }
