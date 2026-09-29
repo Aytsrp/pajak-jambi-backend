@@ -23,6 +23,6 @@ class PemdaVerificationException extends Exception
 
     public static function nikNotFound(string $nik): self
     {
-        return new self("NIK {$nik} tidak ditemukan di sistem Dukcapil.", 404);
+        return new self("NIK {$nik} tidak terdaftar sebagai wajib pajak.", 404);
     }
 }

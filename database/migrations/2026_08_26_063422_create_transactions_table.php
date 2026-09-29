@@ -35,8 +35,9 @@ return new class extends Migration
             $table->string('proof_url')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
-
             $table->index(['reference_type', 'reference_id']);
+            $table->index(['id_user', 'created_at'],'transactions_user_created_index');
+            $table->index(['id_user', 'status', 'paid_at'],'transactions_user_status_paid_index');
         });
     }
 

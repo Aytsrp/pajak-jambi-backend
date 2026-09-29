@@ -26,7 +26,7 @@ class NikVerificationService
             'type' => VerificationType::Nik,
             'value_checked' => $nik,
             'is_found' => $data !== null,
-            'source' => 'dukcapil_dummy',
+            'source' => 'oracle_dat_subjek_pajak',
             'ip_address' => $ipAddress,
         ]);
 

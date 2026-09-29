@@ -114,6 +114,21 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'oracle' => [
+            'driver'   => 'oracle',
+            'tns' => sprintf(
+                '(DESCRIPTION=(CONNECT_TIMEOUT=15)(TRANSPORT_CONNECT_TIMEOUT=10)(RETRY_COUNT=1)'
+                    . '(ADDRESS=(PROTOCOL=TCP)(HOST=%s)(PORT=%s))(CONNECT_DATA=(SERVICE_NAME=%s)))',
+                env('ORACLE_HOST'),
+                env('ORACLE_PORT', '1521'),
+                env('ORACLE_SERVICE_NAME')
+            ),
+            'database' => env('ORACLE_SERVICE_NAME'),
+            'username' => env('ORACLE_USERNAME'),
+            'password' => env('ORACLE_PASSWORD'),
+            'charset'  => 'AL32UTF8',
+            'prefix'   => '',
+        ],
     ],
 
     /*
@@ -149,7 +164,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')) . '-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 

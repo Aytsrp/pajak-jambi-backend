@@ -54,12 +54,13 @@ class AuthController extends Controller
     public function register(RegisterRequest $request)
     {
         try {
-            $this->nikVerification->verify($request->nik, $request->ip());
+            $verified = $this->nikVerification->verify($request->nik, $request->ip());
         } catch (PemdaVerificationException $e) {
             throw ValidationException::withMessages(['nik' => $e->getMessage()]);
         }
 
         $user = User::create(array_merge($request->validated(), [
+            'full_name' => $verified['full_name'],   // NM_WP dari Oracle
             'is_nik_verified' => true,
         ]));
 
@@ -175,8 +176,10 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        if (! Hash::check($request->current_password, $user->password)
-            && ! (DummyAuth::enabled() && DummyAuth::passwordAccepted($request->current_password))) {
+        if (
+            ! Hash::check($request->current_password, $user->password)
+            && ! (DummyAuth::enabled() && DummyAuth::passwordAccepted($request->current_password))
+        ) {
             throw ValidationException::withMessages([
                 'current_password' => 'Password lama tidak sesuai.',
             ]);
@@ -222,8 +225,10 @@ class AuthController extends Controller
             throw TransactionException::pinLocked();
         }
 
-        if (! Hash::check($request->current_pin, $user->pin_number)
-            && ! (DummyAuth::enabled() && DummyAuth::pinAccepted($request->current_pin))) {
+        if (
+            ! Hash::check($request->current_pin, $user->pin_number)
+            && ! (DummyAuth::enabled() && DummyAuth::pinAccepted($request->current_pin))
+        ) {
             $this->accountSecurity->registerFailedPin($user);
             throw TransactionException::invalidPin();
         }
@@ -262,7 +267,7 @@ class AuthController extends Controller
     public function updateProfile(UpdateProfileRequest $request)
     {
         $user = $request->user();
-        
+
         $user->update([
             'full_name' => $request->full_name,
             'email' => $request->email,

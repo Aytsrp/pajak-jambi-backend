@@ -15,7 +15,7 @@ class VerifyOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nik' => ['required', 'digits:16', 'exists:users,nik'],
+            'nik' => ['required', 'digits:18', 'exists:users,nik'],
             'purpose' => ['required', Rule::in(['unlock_account', 'reset_password', 'reset_pin'])],
             'code' => ['required', 'digits:6'],
 
