@@ -31,12 +31,17 @@ class TransactionController extends Controller
                     new OA\Property(property: "id_bill", type: "integer", example: 1),
                     new OA\Property(property: "payment_channel", type: "string", enum: ["bank_transfer", "qris"], example: "bank_transfer"),
                     new OA\Property(property: "bank_code", type: "string", enum: ["bank_jambi", "mandiri", "bri", "bni", "btn"], nullable: true, example: "bank_jambi", description: "Wajib diisi jika payment_channel = bank_transfer"),
-                    new OA\Property(property: "id_payment", type: "integer", nullable: true, example: 1, description: "Opsional — ID metode pembayaran tersimpan"),
+                    new OA\Property(property: "id_payment", type: "integer", nullable: true, example: 1, description: "Opsional â€” ID metode pembayaran tersimpan"),
                     new OA\Property(property: "pin", type: "string", example: "123456", description: "PIN transaksi 6 digit, divalidasi langsung di step ini"),
                     new OA\Property(property: "idempotency_key", type: "string", example: "a1b2c3d4-uuid-dari-flutter"),
                 ]
             )
-        )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: "Transaksi berhasil dibuat & pembayaran siap dibayar"),
+            new OA\Response(response: 400, description: "Validasi gagal / PIN salah"),
+            new OA\Response(response: 404, description: "Tagihan tidak ditemukan"),
+        ]
     )]
     public function initiate(InitiateTransactionRequest $request)
     {
@@ -53,7 +58,7 @@ class TransactionController extends Controller
             paymentId: $request->id_payment,
         );
 
-        return TransactionResource::make($transaction->load(['bill', 'payment']))
+        return TransactionResource::make($transaction->load(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()]))
             ->response()
             ->setStatusCode(201);
     }
@@ -145,7 +150,7 @@ class TransactionController extends Controller
 
     #[OA\Post(
         path: "/api/transactions/{id}/simulate-payment",
-        summary: "[DEV ONLY] Simulasikan callback bank/QRIS sukses — otomatis 404 di production",
+        summary: "[DEV ONLY] Simulasikan callback bank/QRIS sukses â€” otomatis 404 di production",
         tags: ["Transactions"],
         security: [["bearerAuth" => []]],
         parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
@@ -161,7 +166,7 @@ class TransactionController extends Controller
         $transaction = $request->user()->transactions()->findOrFail($id);
         $transaction = $this->service->simulateSuccess($transaction);
 
-        return TransactionResource::make($transaction->load(['bill', 'payment']));
+        return TransactionResource::make($transaction->load(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()]));
     }
 
     #[OA\Get(

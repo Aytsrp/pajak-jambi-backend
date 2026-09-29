@@ -23,6 +23,7 @@ class TransactionResource extends JsonResource
             'bill' => new BillResource($this->whenLoaded('bill')),
             'payment_method' => new PaymentResource($this->whenLoaded('payment')),
             'object_name' => $this->whenLoaded('reference', fn() => $this->reference?->object_name ?? $this->reference?->business_name),
+            'reference_number' => $this->whenLoaded('reference', fn() => $this->reference?->nop_number ?? $this->reference?->npwpd_number),
 
             'bank_code' => $this->bank_code?->value,
             'bank_label' => $this->bank_code?->label(),
