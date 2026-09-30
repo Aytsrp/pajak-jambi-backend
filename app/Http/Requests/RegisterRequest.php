@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nik.digits' => 'NIK harus terdiri dari 16 digit.',
+            'nik.digits' => 'NIK harus terdiri dari 18 digit.',
             'pin_number.digits' => 'PIN harus terdiri dari 6 digit.',
         ];
     }
