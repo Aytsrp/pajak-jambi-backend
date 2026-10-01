@@ -1,15 +1,13 @@
 <?php
 
 /**
- * Konfigurasi driver integrasi Pemda Kota Jambi.
- *
- * Saat ini hanya "dummy" yang tersedia karena akses API resmi Dukcapil & Bapenda
- * belum ada. Nanti kalau sudah dapat endpoint resmi:
- *   1. Buat class RealDukcapilService & RealBapendaService (implements contract yang sama)
- *   2. Tambahkan case 'real' di PemdaServiceProvider
- *   3. Ubah PEMDA_SERVICE_DRIVER=real di .env
- * Tidak perlu ubah controller/service lain sama sekali.
+ * Parameter perhitungan denda PBB untuk ESTIMASI di aplikasi (bukan nominal final --
+ * lihat App\Services\Oracle\OracleBapendaService::estimatePenalty()).
+ * Sesuaikan kalau ada perubahan regulasi daerah.
  */
 return [
-    'driver' => env('PEMDA_SERVICE_DRIVER', 'dummy'),
+    'denda_pbb' => [
+        'persen_per_bulan' => 2,
+        'maksimal_bulan' => 24,
+    ],
 ];

@@ -8,12 +8,12 @@ class PemdaVerificationException extends Exception
 {
     public static function nopNotFound(string $nopNumber): self
     {
-        return new self("NOP {$nopNumber} tidak ditemukan di sistem Bapenda Kota Jambi.", 404);
+        return new self("NOP tidak ditemukan di sistem Bapenda Kota Jambi.", 404);
     }
 
     public static function npwpdNotFound(string $npwpdNumber): self
     {
-        return new self("NPWPD {$npwpdNumber} tidak ditemukan di sistem Bapenda Kota Jambi.", 404);
+        return new self("NPWPD tidak ditemukan di sistem Bapenda Kota Jambi.", 404);
     }
 
     public static function npwpdAlreadyRegistered(): self
@@ -23,6 +23,6 @@ class PemdaVerificationException extends Exception
 
     public static function nikNotFound(string $nik): self
     {
-        return new self("NIK {$nik} tidak terdaftar sebagai wajib pajak.", 404);
+        return new self("NIK tidak terdaftar sebagai wajib pajak.", 404);
     }
 }
