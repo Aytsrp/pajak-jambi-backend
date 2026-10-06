@@ -19,7 +19,8 @@ class TransactionController extends Controller
 
     public function __construct(
         private readonly TransactionService $service,
-    ) {}
+    ) {
+    }
 
     #[OA\Post(
         path: "/api/transactions/initiate",
@@ -68,18 +69,25 @@ class TransactionController extends Controller
 
     #[OA\Get(
         path: "/api/transactions",
-        summary: "Riwayat transaksi, dengan filter jenis pajak & rentang tanggal",
+        summary: "Riwayat transaksi, dengan filter jenis pajak & rentang tanggal (paginasi)",
         tags: ["Transactions"],
         security: [["bearerAuth" => []]],
         parameters: [
             new OA\Parameter(name: "tax_type", in: "query", schema: new OA\Schema(type: "string", enum: ["pbb", "pajak_usaha", "bphtb"])),
             new OA\Parameter(name: "from", in: "query", schema: new OA\Schema(type: "string", format: "date")),
             new OA\Parameter(name: "to", in: "query", schema: new OA\Schema(type: "string", format: "date")),
+            new OA\Parameter(name: "page", in: "query", description: "Nomor halaman, mulai dari 1", schema: new OA\Schema(type: "integer", default: 1, minimum: 1)),
+            new OA\Parameter(name: "per_page", in: "query", description: "Jumlah item per halaman (maks. 50)", schema: new OA\Schema(type: "integer", default: 20, minimum: 1, maximum: 50)),
         ],
         responses: [new OA\Response(response: 200, description: "Daftar riwayat transaksi")]
     )]
     public function index(Request $request)
     {
+        $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
         $query = $request->user()->transactions()
             ->with(self::WITH_RELATIONS)
             ->latest('id_transactions');
@@ -96,7 +104,9 @@ class TransactionController extends Controller
             $query->whereDate('created_at', '<=', $request->to);
         }
 
-        return TransactionResource::collection($query->paginate(20));
+        $perPage = $request->integer('per_page', 20);
+
+        return TransactionResource::collection($query->paginate($perPage));
     }
 
     #[OA\Get(
@@ -229,7 +239,7 @@ class TransactionController extends Controller
             ->groupBy('month')
             ->orderBy('month')
             ->get()
-            ->keyBy(fn ($row) => (int) $row->month);
+            ->keyBy(fn($row) => (int) $row->month);
 
         $result = [];
         for ($m = 1; $m <= 12; $m++) {

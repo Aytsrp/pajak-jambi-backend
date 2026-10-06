@@ -18,21 +18,33 @@ class NopController extends Controller
     public function __construct(
         private readonly NopRegistrationService $registrationService,
         private readonly BillSyncService $billSync,
-    ) {}
+    ) {
+    }
 
     #[OA\Get(
         path: "/api/nops",
-        summary: "List semua NOP milik user yang login beserta tagihannya",
+        summary: "List semua NOP milik user yang login beserta tagihannya (paginasi)",
         tags: ["NOP (PBB-P2)"],
         security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "page", in: "query", description: "Nomor halaman, mulai dari 1", schema: new OA\Schema(type: "integer", default: 1, minimum: 1)),
+            new OA\Parameter(name: "per_page", in: "query", description: "Jumlah item per halaman (maks. 50)", schema: new OA\Schema(type: "integer", default: 20, minimum: 1, maximum: 50)),
+        ],
         responses: [
-            new OA\Response(response: 200, description: "Daftar NOP berhasil diambil"),
+            new OA\Response(response: 200, description: "Daftar NOP berhasil diambil. Flutter baca meta.current_page / meta.last_page untuk infinite scroll."),
             new OA\Response(response: 401, description: "Belum login / token tidak valid"),
         ]
     )]
     public function index(Request $request)
     {
-        $nops = $request->user()->nops()->with('bills')->get();
+        $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $perPage = $request->integer('per_page', 20);
+
+        $nops = $request->user()->nops()->with('bills')->paginate($perPage);
 
         return NopResource::collection($nops);
     }

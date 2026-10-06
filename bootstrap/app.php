@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -29,7 +30,6 @@ return Application::configure(basePath: dirname(__DIR__))
             ForceJsonResponse::class,
         ]);
 
-        // API-only: jangan redirect ke named route "login" (tidak ada) — itu yang bikin 500.
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return null;
@@ -41,6 +41,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(function (Request $request, \Throwable $e) {
             return $request->is('api/*') || $request->expectsJson();
+        });
+    
+        $exceptions->render(function (ServiceUnavailableHttpException $e, Request $request) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            $retryAfter = (int) ($e->getHeaders()['Retry-After'] ?? 30);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'retry_after' => $retryAfter,
+            ], 503)->withHeaders($e->getHeaders());
         });
 
         $exceptions->render(function (AuthenticationException $e, Request $request) {
@@ -62,7 +75,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
-            if (! ($request->is('api/*') || $request->expectsJson())) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
