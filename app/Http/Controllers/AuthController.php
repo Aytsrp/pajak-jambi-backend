@@ -23,7 +23,8 @@ class AuthController extends Controller
     public function __construct(
         private readonly AccountSecurityService $accountSecurity,
         private readonly NikVerificationService $nikVerification,
-    ) {}
+    ) {
+    }
 
     #[OA\Post(
         path: "/api/register",
@@ -70,6 +71,7 @@ class AuthController extends Controller
                 'id_user' => $user->id_user,
                 'full_name' => $user->full_name,
                 'email' => $user->email,
+                'is_nik_verified' => $user->is_nik_verified,
             ],
         ], 201);
     }
@@ -105,7 +107,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! $user || ! Auth::validate(['nik' => $request->nik, 'password' => $request->password])) {
+        if (!$user || !Auth::validate(['nik' => $request->nik, 'password' => $request->password])) {
             if ($user) {
                 $this->accountSecurity->registerFailedLogin($user);
             }
@@ -177,8 +179,8 @@ class AuthController extends Controller
         $user = $request->user();
 
         if (
-            ! Hash::check($request->current_password, $user->password)
-            && ! (DummyAuth::enabled() && DummyAuth::passwordAccepted($request->current_password))
+            !Hash::check($request->current_password, $user->password)
+            && !(DummyAuth::enabled() && DummyAuth::passwordAccepted($request->current_password))
         ) {
             throw ValidationException::withMessages([
                 'current_password' => 'Password lama tidak sesuai.',
@@ -226,8 +228,8 @@ class AuthController extends Controller
         }
 
         if (
-            ! Hash::check($request->current_pin, $user->pin_number)
-            && ! (DummyAuth::enabled() && DummyAuth::pinAccepted($request->current_pin))
+            !Hash::check($request->current_pin, $user->pin_number)
+            && !(DummyAuth::enabled() && DummyAuth::pinAccepted($request->current_pin))
         ) {
             $this->accountSecurity->registerFailedPin($user);
             throw TransactionException::invalidPin();
