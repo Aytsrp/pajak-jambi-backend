@@ -13,6 +13,7 @@ use App\Http\Controllers\QrisWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // ─────── Public ────────────────────────────────────────────────────────────────
+Route::pattern('id', '[0-9]+');
 
 Route::post('/register', [AuthController::class, 'register'])
     ->middleware('throttle:register');
