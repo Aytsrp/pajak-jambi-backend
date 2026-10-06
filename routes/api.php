@@ -46,18 +46,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/summary', [TaxSummaryController::class, 'index']);
 
-    Route::get('/nops', [NopController::class, 'index']);
-    Route::post('/nops/check', [NopController::class, 'check']);
-    Route::post('/nops', [NopController::class, 'store']);
-    Route::get('/nops/{id}', [NopController::class, 'show']);
-    Route::delete('/nops/{id}', [NopController::class, 'destroy']);
-    Route::post('/nops/{id}/refresh', [NopController::class, 'refresh']);
+    Route::middleware('throttle:pemda-lookup')->group(function () {
+        Route::get('/nops', [NopController::class, 'index']);
+        Route::post('/nops/check', [NopController::class, 'check']);
+        Route::post('/nops', [NopController::class, 'store']);
+        Route::get('/nops/{id}', [NopController::class, 'show']);
+        Route::delete('/nops/{id}', [NopController::class, 'destroy']);
+        Route::post('/nops/{id}/refresh', [NopController::class, 'refresh']);
 
-    Route::get('/npwpd', [NpwpdController::class, 'show']);
-    Route::post('/npwpd/check', [NpwpdController::class, 'check']);
-    Route::post('/npwpd', [NpwpdController::class, 'store']);
-    Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
-    Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh']);
+        Route::get('/npwpd', [NpwpdController::class, 'show']);
+        Route::post('/npwpd/check', [NpwpdController::class, 'check']);
+        Route::post('/npwpd', [NpwpdController::class, 'store']);
+        Route::delete('/npwpd', [NpwpdController::class, 'destroy']);
+        Route::post('/npwpd/refresh', [NpwpdController::class, 'refresh']);
+    });
 
     Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
     Route::post('/payment-methods', [PaymentMethodController::class, 'store']);
@@ -68,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/monthly-summary', [TransactionController::class, 'monthlySummary']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
     Route::post('/transactions/{id}/simulate-payment', [TransactionController::class, 'simulatePayment']);
+    Route::post('/transactions/{id}/simulate-fail', [TransactionController::class, 'simulateFail']);
     Route::get('/transactions/{id}/proof', [TransactionController::class, 'proof'])
         ->name('transactions.proof');
 
@@ -75,7 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-});  
+});
 
 Route::middleware(['auth:sanctum', 'has.tax.object'])->group(function () {
     Route::post('/transactions/initiate', [TransactionController::class, 'initiate']);

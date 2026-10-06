@@ -10,12 +10,6 @@ use Illuminate\Support\Facades\Log;
 use PDOException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
-/**
- * Data objek pajak (NOP) & tagihan PBB dari Oracle (read-only).
- * Sumber: PBBDUMMY.DAT_OBJEK_PAJAK, PBBDUMMY.DAT_SUBJEK_PAJAK, PBBDUMMY.SPPT.
- *
- * NPWPD tidak ditangani di sini -- lihat App\Services\Pemda\HybridBapendaService.
- */
 class OracleBapendaService
 {
     private const TABLE_OBJEK = 'PBBDUMMY.DAT_OBJEK_PAJAK';
@@ -24,7 +18,6 @@ class OracleBapendaService
 
     private const TABLE_SPPT = 'PBBDUMMY.SPPT';
 
-    // Urutan HARUS sama dengan App\Support\Nop::SEGMENT_LENGTHS.
     private const NOP_COLUMNS = [
         'KD_PROPINSI', 'KD_DATI2', 'KD_KECAMATAN', 'KD_KELURAHAN', 'KD_BLOK', 'NO_URUT', 'KD_JNS_OP',
     ];
@@ -32,10 +25,6 @@ class OracleBapendaService
     private const STATUS_BELUM_BAYAR = '0';
 
     /**
-     * Info objek pajak untuk ditampilkan sebelum user konfirmasi pendaftaran NOP.
-     * Nama pemilik (owner_name) bisa null -- artinya SUBJEK_PAJAK_ID di Oracle
-     * belum tersambung ke DAT_SUBJEK_PAJAK. Itu kondisi wajar, BUKAN error.
-     *
      * @return array{object_address: string, land_area_m2: float, building_area_m2: float, njop_land: float, njop_building: float, owner_name: ?string}|null
      */
     public function findNop(string $nopNumber): ?array
@@ -67,25 +56,20 @@ class OracleBapendaService
 
         $row = array_change_key_case((array) $row, CASE_LOWER);
 
+        $address = $this->composeAddress($row);
+
         return [
-            'object_address' => $this->composeAddress($row),
+            'object_name' => $address,
+            'object_address' => $address,
             'land_area_m2' => (float) $row['total_luas_bumi'],
             'building_area_m2' => (float) $row['total_luas_bng'],
             'njop_land' => (float) $row['njop_bumi'],
             'njop_building' => (float) $row['njop_bng'],
-            // null = SUBJEK_PAJAK_ID belum tersambung ke DAT_SUBJEK_PAJAK di data ini.
             'owner_name' => isset($row['nm_wp']) ? trim((string) $row['nm_wp']) : null,
         ];
     }
 
     /**
-     * Semua tahun pajak yang STATUS_PEMBAYARAN_SPPT-nya masih '0' (belum dibayar),
-     * terurut dari yang paling lama. Satu NOP bisa punya tunggakan beberapa tahun sekaligus.
-     *
-     * 'penalty_amount' adalah ESTIMASI (2%/bulan keterlambatan, maks 24 bulan) --
-     * SPPT tidak menyimpan denda untuk tagihan yang belum dibayar. Nominal final
-     * ditentukan sistem pemerintah saat pembayaran diproses.
-     *
      * @return list<array{tax_period: string, amount_due: float, penalty_amount: float, due_date: string, payment_code: ?string}>
      */
     public function getBillsForNop(string $nopNumber): array
@@ -128,17 +112,12 @@ class OracleBapendaService
                     'amount_due' => $principal,
                     'penalty_amount' => $this->estimatePenalty($principal, $dueDate),
                     'due_date' => $dueDate->toDateString(),
-                    'payment_code' => isset($row['kode_bayar']) ? trim((string) $row['kode_bayar']) : null,
                 ];
             })
             ->values()
             ->all();
     }
 
-    /**
-     * Estimasi denda PBB: 2% per bulan keterlambatan dari jatuh tempo, maksimal 24 bulan.
-     * ESTIMASI untuk ditampilkan ke user -- bukan nominal final.
-     */
     private function estimatePenalty(float $principal, Carbon $dueDate): float
     {
         if ($dueDate->isFuture()) {

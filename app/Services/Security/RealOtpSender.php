@@ -18,7 +18,7 @@ class RealOtpSender implements OtpSenderInterface
             $email = $user->email;
             if ($email) {
                 try {
-                    Mail::to($email)->send(new OtpMail($plainCode));
+                    Mail::to($email)->queue(new OtpMail($plainCode));
                     Log::info("Sent OTP via Email to {$email}");
                     return true;
                 } catch (Exception $e) {

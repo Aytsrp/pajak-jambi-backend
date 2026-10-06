@@ -42,7 +42,7 @@ class NopRegistrationService
             'type' => VerificationType::Nop,
             'value_checked' => $nopNumber,
             'is_found' => $data !== null,
-            'source' => 'bapenda_dummy',
+            'source' => 'bapenda_oracle',
             'ip_address' => $ipAddress,
         ]);
 

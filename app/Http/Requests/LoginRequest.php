@@ -14,8 +14,15 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nik' => ['required', 'digits:18'],
+            'nik' => ['required', 'digits_between:16,20'],
             'password' => ['required', 'string'],
+        ];
+    }
+
+        public function messages(): array
+    {
+        return [
+            'nik.digits_between' => 'NIK harus terdiri dari 16 digit.',
         ];
     }
 }

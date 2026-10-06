@@ -68,6 +68,11 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute($max)->by('nik:' . ($request->input('nik') ?: $request->ip())),
             ];
         });
+
+        RateLimiter::for('pemda-lookup', function (Request $request) {
+            $max = (int) config('security.rate_limit.pemda_lookup_per_minute');
+
+            return Limit::perMinute($max)->by($request->user()?->id_user ?? $request->ip());
+        });
     }
 }
-

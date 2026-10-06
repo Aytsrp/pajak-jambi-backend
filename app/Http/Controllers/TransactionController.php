@@ -6,6 +6,7 @@ use App\Enums\BankCode;
 use App\Enums\PaymentChannel;
 use App\Http\Requests\InitiateTransactionRequest;
 use App\Http\Resources\TransactionResource;
+use App\Models\Transaction;
 use App\Services\Payment\TransactionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -14,6 +15,8 @@ use Carbon\Carbon;
 
 class TransactionController extends Controller
 {
+    private const WITH_RELATIONS = ['bill', 'payment', 'user', 'reference'];
+
     public function __construct(
         private readonly TransactionService $service,
     ) {}
@@ -31,7 +34,7 @@ class TransactionController extends Controller
                     new OA\Property(property: "id_bill", type: "integer", example: 1),
                     new OA\Property(property: "payment_channel", type: "string", enum: ["bank_transfer", "qris"], example: "bank_transfer"),
                     new OA\Property(property: "bank_code", type: "string", enum: ["bank_jambi", "mandiri", "bri", "bni", "btn"], nullable: true, example: "bank_jambi", description: "Wajib diisi jika payment_channel = bank_transfer"),
-                    new OA\Property(property: "id_payment", type: "integer", nullable: true, example: 1, description: "Opsional â€” ID metode pembayaran tersimpan"),
+                    new OA\Property(property: "id_payment", type: "integer", nullable: true, example: 1, description: "Opsional — ID metode pembayaran tersimpan"),
                     new OA\Property(property: "pin", type: "string", example: "123456", description: "PIN transaksi 6 digit, divalidasi langsung di step ini"),
                     new OA\Property(property: "idempotency_key", type: "string", example: "a1b2c3d4-uuid-dari-flutter"),
                 ]
@@ -58,7 +61,7 @@ class TransactionController extends Controller
             paymentId: $request->id_payment,
         );
 
-        return TransactionResource::make($transaction->load(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()]))
+        return TransactionResource::make($transaction->load(self::WITH_RELATIONS))
             ->response()
             ->setStatusCode(201);
     }
@@ -78,7 +81,7 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $query = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
+            ->with(self::WITH_RELATIONS)
             ->latest('id_transactions');
 
         if ($request->filled('tax_type')) {
@@ -110,7 +113,7 @@ class TransactionController extends Controller
     public function show(Request $request, int $id)
     {
         $transaction = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
+            ->with(self::WITH_RELATIONS)
             ->findOrFail($id);
 
         return TransactionResource::make($transaction);
@@ -130,15 +133,18 @@ class TransactionController extends Controller
     public function proof(Request $request, int $id)
     {
         $transaction = $request->user()->transactions()
-            ->with(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()])
+            ->with(self::WITH_RELATIONS)
             ->where('status', 'success')
             ->findOrFail($id);
 
-        $objectName = $transaction->reference?->object_name ?? $transaction->reference?->business_name ?? '-';
+        $reference = $transaction->reference;
 
         $pdf = Pdf::loadView('pdf.proof', [
             'transaction' => $transaction,
-            'objectName' => $objectName,
+            'objectName' => $reference?->object_name ?? $reference?->business_name ?? '-',
+            'referenceNumber' => $reference?->nop_number ?? $reference?->npwpd_number ?? '-',
+            'registeredOwnerName' => $reference?->owner_name,
+            'paymentMethodLabel' => $this->paymentMethodLabel($transaction),
         ]);
 
         $filename = "bukti-{$transaction->transaction_ref}.pdf";
@@ -148,9 +154,23 @@ class TransactionController extends Controller
             : $pdf->stream($filename);
     }
 
+    /**
+     * Label metode bayar untuk ditampilkan di struk. Diambil dari channel +
+     * bank yang DIPAKAI transaksi ini (bukan dari payment method tersimpan,
+     * yang opsional dan bisa null).
+     */
+    private function paymentMethodLabel(Transaction $transaction): string
+    {
+        return match ($transaction->payment_channel) {
+            PaymentChannel::BankTransfer => $transaction->bank_code->label() . ' (VA: ' . $transaction->va_number . ')',
+            PaymentChannel::Qris => 'QRIS',
+            default => $transaction->payment?->provider ?? '-',
+        };
+    }
+
     #[OA\Post(
         path: "/api/transactions/{id}/simulate-payment",
-        summary: "[DEV ONLY] Simulasikan callback bank/QRIS sukses â€” otomatis 404 di production",
+        summary: "[DEV ONLY] Simulasikan callback bank/QRIS sukses — otomatis 404 di production",
         tags: ["Transactions"],
         security: [["bearerAuth" => []]],
         parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
@@ -166,7 +186,28 @@ class TransactionController extends Controller
         $transaction = $request->user()->transactions()->findOrFail($id);
         $transaction = $this->service->simulateSuccess($transaction);
 
-        return TransactionResource::make($transaction->load(['bill', 'payment', 'reference' => fn($q) => $q->withTrashed()]));
+        return TransactionResource::make($transaction->load(self::WITH_RELATIONS));
+    }
+
+    #[OA\Post(
+        path: "/api/transactions/{id}/simulate-fail",
+        summary: "[DEV ONLY] Simulasikan callback bank/QRIS gagal/dibatalkan — otomatis 404 di production",
+        tags: ["Transactions"],
+        security: [["bearerAuth" => []]],
+        parameters: [new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "integer"))],
+        responses: [
+            new OA\Response(response: 200, description: "Transaksi berhasil disimulasikan gagal"),
+            new OA\Response(response: 404, description: "Tidak ditemukan, atau dinonaktifkan di production"),
+        ]
+    )]
+    public function simulateFail(Request $request, int $id)
+    {
+        abort_if(app()->isProduction(), 404);
+
+        $transaction = $request->user()->transactions()->findOrFail($id);
+        $transaction = $this->service->simulateFailure($transaction);
+
+        return TransactionResource::make($transaction->load(self::WITH_RELATIONS));
     }
 
     #[OA\Get(
@@ -188,7 +229,7 @@ class TransactionController extends Controller
             ->groupBy('month')
             ->orderBy('month')
             ->get()
-            ->keyBy(fn($row) => (int) $row->month);
+            ->keyBy(fn ($row) => (int) $row->month);
 
         $result = [];
         for ($m = 1; $m <= 12; $m++) {

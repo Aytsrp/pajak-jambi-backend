@@ -146,4 +146,18 @@ class TransactionService
 
         return $transaction;
     }
+
+    public function simulateFailure(Transaction $transaction): Transaction
+    {
+        if ($transaction->status !== TransactionStatus::Pending) {
+            return $transaction;
+        }
+
+        $transaction->update([
+            'status' => TransactionStatus::Failed,
+            'gateway_ref' => 'SIMULATED-FAILED-' . strtoupper(Str::random(10)),
+        ]);
+
+        return $transaction->fresh();
+    }
 }

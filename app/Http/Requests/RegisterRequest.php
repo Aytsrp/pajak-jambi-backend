@@ -14,7 +14,7 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nik' => ['required', 'digits:18', 'unique:users,nik'],
+            'nik' => ['required', 'digits_between:16,20', 'unique:users,nik'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['required', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nik.digits' => 'NIK harus terdiri dari 18 digit.',
+            'nik.digits_between' => 'NIK harus terdiri dari 16 digit.',
             'pin_number.digits' => 'PIN harus terdiri dari 6 digit.',
         ];
     }
