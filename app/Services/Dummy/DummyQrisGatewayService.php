@@ -16,7 +16,7 @@ class DummyQrisGatewayService implements QrisGatewayInterface
         return [
             'qr_string' => $qrString,
             'qr_image_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrString),
-            'expired_at' => Carbon::now()->addMinutes(15), // QRIS lazimnya lebih pendek dari VA
+            'expired_at' => Carbon::now()->addMinutes(config('payment.lifetime.qris_minutes')),
         ];
     }
 

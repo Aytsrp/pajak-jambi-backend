@@ -15,7 +15,7 @@ class DummyBankGatewayService implements BankGatewayInterface
 
         return [
             'va_number' => $vaNumber,
-            'expired_at' => Carbon::now()->addHours(24),
+            'expired_at' => Carbon::now()->addMinutes(config('payment.lifetime.bank_transfer_minutes')),
         ];
     }
 

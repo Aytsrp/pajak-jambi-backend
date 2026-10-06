@@ -26,7 +26,8 @@ class TransactionService
         private readonly BankGatewayManager $bankManager,
         private readonly QrisGatewayInterface $qrisGateway,
         private readonly AccountSecurityService $accountSecurity,
-    ) {}
+    ) {
+    }
 
     /**
      * @throws TransactionException
@@ -48,28 +49,42 @@ class TransactionService
         if ($user->isPinLocked()) {
             throw TransactionException::pinLocked();
         }
-        if (! Hash::check($pin, $user->pin_number)
-            && ! (DummyAuth::enabled() && DummyAuth::pinAccepted($pin))) {
+        if (
+            !Hash::check($pin, $user->pin_number)
+            && !(DummyAuth::enabled() && DummyAuth::pinAccepted($pin))
+        ) {
             $this->accountSecurity->registerFailedPin($user);
             throw TransactionException::invalidPin();
         }
         $this->accountSecurity->resetPinAttempts($user);
 
         $bill = Bill::with('billable')->find($billId);
-        if (! $bill || $bill->billable->id_user !== $user->id_user) {
+        if (!$bill || $bill->billable->id_user !== $user->id_user) {
             throw TransactionException::billNotFound();
         }
         if ($bill->status === BillStatus::Paid) {
             throw TransactionException::billAlreadyPaid();
         }
-        if ($channel === PaymentChannel::BankTransfer && ! $bankCode) {
+        if ($channel === PaymentChannel::BankTransfer && !$bankCode) {
             throw TransactionException::bankCodeRequired();
+        }
+
+        $hasPending = Transaction::where('id_bill', $bill->id_bills)
+            ->where('status', TransactionStatus::Pending)
+            ->where(function ($q) {
+                $q->where('va_expired_at', '>', now())
+                    ->orWhere('qr_expired_at', '>', now());
+            })
+            ->exists();
+
+        if ($hasPending) {
+            throw TransactionException::pendingTransactionExists();
         }
 
         $paymentMethod = null;
         if ($paymentId !== null) {
             $paymentMethod = $user->payments()->find($paymentId);
-            if (! $paymentMethod) {
+            if (!$paymentMethod) {
                 throw TransactionException::paymentMethodNotFound();
             }
         }

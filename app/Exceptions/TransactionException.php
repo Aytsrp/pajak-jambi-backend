@@ -45,4 +45,9 @@ class TransactionException extends Exception
     {
         return new self('bank_code wajib diisi untuk metode pembayaran transfer bank.', 422);
     }
+
+    public static function pendingTransactionExists(): self
+    {
+        return new self('Tagihan ini masih memiliki transaksi yang menunggu pembayaran. Selesaikan atau tunggu hingga kedaluwarsa.', 409);
+    }
 }
