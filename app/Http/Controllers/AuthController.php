@@ -9,6 +9,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\ChangePinRequest;
 use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Pemda\NikVerificationService;
 use App\Services\Security\AccountSecurityService;
@@ -51,7 +52,6 @@ class AuthController extends Controller
             new OA\Response(response: 429, description: "Terlalu banyak percobaan, coba lagi nanti"),
         ]
     )]
-
     public function register(RegisterRequest $request)
     {
         try {
@@ -67,12 +67,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Registrasi berhasil. Silakan login.',
-            'user' => [
-                'id_user' => $user->id_user,
-                'full_name' => $user->full_name,
-                'email' => $user->email,
-                'is_nik_verified' => $user->is_nik_verified,
-            ],
+            'user' => UserResource::make($user),
         ], 201);
     }
 
@@ -96,7 +91,6 @@ class AuthController extends Controller
             new OA\Response(response: 429, description: "Terlalu banyak percobaan, coba lagi nanti"),
         ]
     )]
-
     public function login(LoginRequest $request)
     {
         $user = User::where('nik', $request->nik)->first();
@@ -124,14 +118,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil.',
             'token' => $token,
-            'user' => [
-                'id_user' => $user->id_user,
-                'full_name' => $user->full_name,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-                'has_nop' => $user->nops()->exists(),
-                'has_npwpd' => $user->npwpd()->exists(),
-            ],
+            'user' => UserResource::make($user),
         ]);
     }
 
@@ -216,7 +203,7 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 200, description: "PIN berhasil diubah"),
             new OA\Response(response: 422, description: "PIN lama salah, atau PIN baru sama dengan lama"),
-            new OA\Response(response: 423, description: "PIN terkunci sementara karena terlalu banyak percobaan gagal â€” minta OTP reset PIN (purpose: reset_pin)"),
+            new OA\Response(response: 423, description: "PIN terkunci sementara karena terlalu banyak percobaan gagal — minta OTP reset PIN (purpose: reset_pin)"),
         ]
     )]
     public function changePin(ChangePinRequest $request)
@@ -278,11 +265,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
-            'user' => [
-                'full_name' => $user->full_name,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-            ]
+            'user' => UserResource::make($user),
         ]);
     }
 }
